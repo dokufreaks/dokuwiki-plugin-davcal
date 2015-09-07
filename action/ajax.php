@@ -88,6 +88,26 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
                   $data['html'] = $this->getLang('no_permission');
               }
           break;
+          case 'getSettings':
+              $data['result'] = true;
+              $data['settings'] = $this->hlp->getPersonalSettings($user);
+          break;
+          case 'saveSettings':
+              $settings = array();
+              $settings['weeknumbers'] = $params['weeknumbers'];
+              $settings['timezone'] = $params['timezone'];
+              $settings['workweek'] = $params['workweek'];
+              if($this->hlp->savePersonalSettings($settings, $user))
+              {
+                  $data['result'] = true;
+                  $data['html'] = $this->getLang('settings_saved');
+              }
+              else
+              {
+                  $data['result'] = false;
+                  $data['html'] = $this->getLang('error_saving');
+              }
+          break;
       }
               
               

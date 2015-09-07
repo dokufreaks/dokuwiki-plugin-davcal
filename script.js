@@ -1,5 +1,7 @@
 /* DOKUWIKI:include_once fullcalendar-2.4.0/moment.js */
 /* DOKUWIKI:include_once fullcalendar-2.4.0/fullcalendar.js */
+/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/de.js */
+/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/en.js */
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
 
 jQuery(function() {
@@ -12,33 +14,80 @@ jQuery(function() {
       return moment(this).format(format);
     };
     
+    // Attach to event links
     
-    // Initialize the davcal popup
-    var res = jQuery('#fullCalendar').fullCalendar({
-        dayClick: function(date, jsEvent, view) {
-            dw_davcal__modals.showNewEventDialog(date);
-        },
-        eventClick: function(calEvent, jsEvent, view) {
-            dw_davcal__modals.showEditEventDialog(calEvent);
-        },
-        events: {
-            url: DOKU_BASE + 'lib/exe/ajax.php',
-            type: 'POST',
-            data: {
-                call: 'plugin_davcal',
-                action: 'getEvents',
-                id: JSINFO.id
-            },
-            error: function() {
-                //alert('there was an error retrieving calendar data');
+    jQuery('div.fullCalendarSettings a').each(function() {
+        var $link = jQuery(this);
+        var href = $link.attr('href');
+        if (!href) return;
+        
+        $link.click(
+            function(e) {
+                dw_davcal__modals.showSettingsDialog();
+                e.preventDefault();
+                return '';
             }
+        );
+        }
+    );
+    
+    var postArray = { };
+    jQuery.post(
+        DOKU_BASE + 'lib/exe/ajax.php',
+        {
+            call: 'plugin_davcal',
+            id: JSINFO.id,
+            action: 'getSettings',
+            params: postArray
         },
-        header: {
-            left: 'title',
-            center: 'today prev,next',
-            right: 'month,agendaWeek,agendaDay'
-        },
-    });
+        function(data)
+        {
+            var result = data['result'];
+            if(result === true)
+            {
+                dw_davcal__modals.settings = data['settings'];
+                var wknum = false;
+                var tz = false;
+                var we = true;
+                if(data['settings']['weeknumbers'] == 1)
+                    wknum = true;
+                if(data['settings']['timezne'] !== '')
+                    tz = data['settings']['timezone'];
+                if(data['settings']['workweek'] == 1)
+                    we = false;
+                // Initialize the davcal popup
+                var res = jQuery('#fullCalendar').fullCalendar({
+                    dayClick: function(date, jsEvent, view) {
+                        dw_davcal__modals.showNewEventDialog(date);
+                    },
+                    eventClick: function(calEvent, jsEvent, view) {
+                        dw_davcal__modals.showEditEventDialog(calEvent);
+                    },
+                    events: {
+                        url: DOKU_BASE + 'lib/exe/ajax.php',
+                        type: 'POST',
+                        data: {
+                            call: 'plugin_davcal',
+                            action: 'getEvents',
+                            id: JSINFO.id
+                        },
+                        error: function() {
+                            //alert('there was an error retrieving calendar data');
+                        }
+                    },
+                    header: {
+                        left: 'title',
+                        center: 'today prev,next',
+                        right: 'month,agendaWeek,agendaDay'
+                    },
+                    lang: JSINFO.plugin.davcal['language'],
+                    weekNumbers: wknum,
+                    timeZone: tz,
+                    weekends: we,
+                });
+            }
+        }
+    );    
 });
 
 var dw_davcal__modals = {
@@ -46,10 +95,95 @@ var dw_davcal__modals = {
     $editEventDialog: null,
     $infoDialog: null,
     $confirmDialog: null,
+    $settingsDialog: null,
     msg: null,
     completeCb: null,
     action: null,
     uid: null,
+    settings: null,
+    
+    showSettingsDialog : function() {
+        if(dw_davcal__modals.$settingsDialog)
+            return;
+
+        var dialogButtons = {};
+        dialogButtons[LANG.plugins.davcal['save']] = function() {
+            var postArray = { };
+            jQuery("input[class=dw_davcal__settings]").each(function() {
+              if(jQuery(this).attr('type') == 'checkbox')
+              {
+                  postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
+              }
+              else
+              {
+                  postArray[jQuery(this).prop('name')] = jQuery(this).val();
+              }
+            });
+            jQuery('#dw_davcal__ajaxsettings').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
+            jQuery.post(
+                DOKU_BASE + 'lib/exe/ajax.php',
+                {
+                    call: 'plugin_davcal',
+                    id: JSINFO.id,
+                    action: 'saveSettings',
+                    params: postArray
+                },
+                function(data)
+                {
+                    var result = data['result'];
+                    var html = data['html'];
+                    jQuery('#dw_davcal__ajaxsettings').html(html);
+                    if(result === true)
+                    {
+                        location.reload();
+                    }
+                }
+            );
+        };
+        dialogButtons[LANG.plugins.davcal['cancel']] = function () {
+            dw_davcal__modals.hideSettingsDialog();
+        };
+        
+        dw_davcal__modals.$settingsDialog = jQuery(document.createElement('div'))
+       .dialog({
+           autoOpen: false,
+           draggable: true,
+           title: LANG.plugins.davcal['settings'],
+           resizable: true,         
+           buttons: dialogButtons,
+       })
+       .html(
+            '<div><table>' +
+            //'<tr><td>' + LANG.plugins.davcal['use_lang_tz'] + '</td><td><input type="checkbox" name="use_lang_tz" id+"dw_davcal__settings_use_lang_tz" class="dw_davcal__settings"></td></tr>' + 
+            '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td>Timezone Dropdown</td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
+            '</table>' +
+            '</div>' +
+            '<div id="dw_davcal__ajaxsettings"></div>'
+            )
+       .parent()
+       .attr('id','dw_davcal__settings')
+       .show()
+       .appendTo('.dokuwiki:first');
+       
+           // attach event handlers
+        jQuery('#dw_davcal__settings .ui-dialog-titlebar-close').click(function(){
+          dw_davcal__modals.hideSettingsDialog();
+        });
+        if(dw_davcal__modals.settings)
+        {
+            if(dw_davcal__modals.settings['weeknumbers'] == 1)
+                jQuery('#dw_davcal__settings_weeknumbers').prop('checked', true);
+            else
+                jQuery('#dw_davcal__settings_weeknumbers').prop('checked', false);
+                
+            if(dw_davcal__modals.settings['workweek'] == 1)
+                jQuery('#dw_davcal__settings_workweek').prop('checked', true);
+            else
+                jQuery('#dw_davcal__settings_workweek').prop('checked', false);
+        }        
+    },
     
     showEditEventDialog : function(calEvent) {
         if(dw_davcal__modals.$editEventDialog)
@@ -354,5 +488,11 @@ var dw_davcal__modals = {
         dw_davcal__modals.$confirmDialog.empty();
         dw_davcal__modals.$confirmDialog.remove();
         dw_davcal__modals.$confirmDialog = null;
+    },
+    
+    hideSettingsDialog: function() {
+        dw_davcal__modals.$settingsDialog.empty();
+        dw_davcal__modals.$settingsDialog.remove();
+        dw_davcal__modals.$settingsDialog = null;
     }
 };

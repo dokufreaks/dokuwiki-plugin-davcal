@@ -78,6 +78,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         if($format != 'xhtml') return false;
         
         $R->doc .= '<div id="fullCalendar"></div>';
+        $R->doc .= '<div class="fullCalendarSettings"><a href="#" class="fullCalendarSettings"><img src="'.DOKU_URL.'lib/plugins/davcal/images/settings.png'.'">'.$this->getLang('settings').'</a></div>';
      
     }
 

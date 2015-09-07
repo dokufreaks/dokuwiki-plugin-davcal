@@ -47,6 +47,42 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
   }
   
+  public function savePersonalSettings($settings, $userid = null)
+  {
+      if(is_null($userid))
+          $userid = $_SERVER['REMOTE_USER'];
+      $this->sqlite->query("BEGIN TRANSACTION");
+      
+      foreach($settings as $key => $value)
+      {
+          $query = "INSERT OR REPLACE INTO calendarsettings (userid, key, value) VALUES (".
+                   $this->sqlite->quote_string($userid).", ".
+                   $this->sqlite->quote_string($key).", ".
+                   $this->sqlite->quote_string($value).")";
+          $res = $this->sqlite->query($query);
+          if($res === false)
+              return false;
+      }
+      $this->sqlite->query("COMMIT TRANSACTION");
+      return true;
+  }
+  
+  public function getPersonalSettings($userid = null)
+  {
+      if(is_null($userid))
+        $userid = $_SERVER['REMOTE_USER'];
+      
+      $settings = array();
+      $query = "SELECT key, value FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
+      $res = $this->sqlite->query($query);
+      $arr = $this->sqlite->res2arr($res);
+      foreach($arr as $row)
+      {
+          $settings[$row['key']] = $row['value'];
+      }
+      return $settings;
+  }
+  
   public function getCalendarIdForPage($id = null)
   {
       if(is_null($id))
