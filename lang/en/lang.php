@@ -1,0 +1,22 @@
+<?php
+$lang['created_by_davcal'] = 'Created by DAVCal for DokuWiki';
+$lang['unknown_error'] = 'Unknown Error';
+$lang['event_added'] = 'Event added';
+$lang['event_edited'] = 'Event edited';
+$lang['event_deleted'] = 'Event deleted';
+$lang['no_permission'] = 'You don\'t have permission to modify this calendar';
+$lang['js']['create_new_event'] = 'Create new Event';
+$lang['js']['cancel'] = 'Cancel';
+$lang['js']['create'] = 'Create';
+$lang['js']['edit'] = 'Edit';
+$lang['js']['delete'] = 'Delete';
+$lang['js']['edit_event'] = 'Edit Event';
+$lang['js']['allday'] = 'All Day Event';
+$lang['js']['title'] = 'Title';
+$lang['js']['from'] = 'From';
+$lang['js']['to'] = 'To';
+$lang['js']['yes'] = 'Yes';
+$lang['js']['confirmation'] = 'Confirmation';
+$lang['js']['ok'] = 'OK';
+$lang['js']['info'] = 'Info';
+$lang['js']['really_delete_this_event'] = 'Really delete this event?';

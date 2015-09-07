@@ -1,0 +1,17 @@
+@import "fullcalendar-2.4.0/fullcalendar.less";
+@import "datetimepicker-2.4.5/jquery.datetimepicker.less";
+
+
+/* modal windows */
+#davcal__createnew {
+    position: absolute;
+    background-color: #fff;
+    color: #000;
+    z-index: 20;
+    overflow: hidden;
+}
+
+#davcal__createnew .ui-dialog-content {
+    padding-left: 0;
+    padding-right: 0;
+}
