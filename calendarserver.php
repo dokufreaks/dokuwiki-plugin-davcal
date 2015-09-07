@@ -76,18 +76,17 @@ $caldavPlugin = new Sabre\CalDAV\Plugin();
 $server->addPlugin($caldavPlugin);
 
 /* Calendar subscription support */
-$server->addPlugin(
-    new Sabre\CalDAV\Subscriptions\Plugin()
-);
+//$server->addPlugin(
+//    new Sabre\CalDAV\Subscriptions\Plugin()
+//);
 
 /* Calendar scheduling support */
-$server->addPlugin(
-    new Sabre\CalDAV\Schedule\Plugin()
-);
+//$server->addPlugin(
+//    new Sabre\CalDAV\Schedule\Plugin()
+//);
 
 /* WebDAV-Sync plugin */
-// This breaks the way we manage our calendars - sorry
-// $server->addPlugin(new Sabre\DAV\Sync\Plugin());
+$server->addPlugin(new Sabre\DAV\Sync\Plugin());
 
 // Support for html frontend
 $browser = new Sabre\DAV\Browser\Plugin();

@@ -106,9 +106,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       str_replace(array('/', ' ', ':'), '_', $id), 
                       $description,
                       'VEVENT,VTODO',
-                      0);
-      $query = "INSERT INTO calendars (principaluri, displayname, uri, description, components, transparent) VALUES (".$this->sqlite->quote_and_join($values, ',').");";
+                      0,
+                      1);
+      $query = "INSERT INTO calendars (principaluri, displayname, uri, description, components, transparent, synctoken) VALUES (".$this->sqlite->quote_and_join($values, ',').");";
       $res = $this->sqlite->query($query);
+      if($res === false)
+        return false;
       $query = "SELECT id FROM calendars WHERE principaluri=".$this->sqlite->quote_string($values[0])." AND ".
                "displayname=".$this->sqlite->quote_string($values[1])." AND ".
                "uri=".$this->sqlite->quote_string($values[2])." AND ".
@@ -120,7 +123,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $values = array($id, $row['id']);
           $query = "INSERT INTO pagetocalendarmapping (page, calid) VALUES (".$this->sqlite->quote_and_join($values, ',').")";
           $res = $this->sqlite->query($query);
-          return true;
+          return ($res !== false);
       }
       
       return false;
@@ -155,7 +158,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, componenttype, firstoccurence, lastoccurence, size, etag, uid) VALUES (".$this->sqlite->quote_and_join($values, ',').")";
       $res = $this->sqlite->query($query);
-      return true;
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'added');
+          return true;
+      }
+      return false;
   }
 
   public function getEventsWithinDateRange($id, $user, $startDate, $endDate)
@@ -189,7 +197,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   
   public function getEventWithUid($uid)
   {
-      $query = "SELECT calendardata, componenttype FROM calendarobjects WHERE uid=".
+      $query = "SELECT calendardata, calendarid, componenttype, uri FROM calendarobjects WHERE uid=".
                 $this->sqlite->quote_string($uid);
       $res = $this->sqlite->query($query);
       $row = $this->sqlite->res2row($res);
@@ -198,10 +206,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   
   public function editCalendarEntryForPage($id, $user, $params)
   {
-      $event = $this->getEventWithUid($params['uid']);
+      $uid = $params['uid'];
+      $event = $this->getEventWithUid($uid);
       require_once('vendor/autoload.php');
       if(!isset($event['calendardata']))
         return false;
+      $uri = $event['uri'];
+      $calid = $event['calendarid'];
       $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
       $vcal->VEVENT->summary = $params['eventname'];
       $dtStart = new \DateTime($params['eventfrom'], new \DateTimeZone('Europe/Vienna')); // FIXME: Timezone
@@ -217,17 +228,78 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                ", lastoccurence=".$this->sqlite->quote_string($dtEnd->getTimestamp()).
                ", size=".strlen($eventStr).
                ", etag=".$this->sqlite->quote_string(md5($eventStr)).
-               " WHERE uid=".$this->sqlite->quote_string($params['uid']);
+               " WHERE uid=".$this->sqlite->quote_string($uid);
       $res = $this->sqlite->query($query);
-      return true;
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'modified');
+          return true;
+      }
+      return false;
   }
 
   public function deleteCalendarEntryForPage($id, $params)
   {
       $uid = $params['uid'];
+      $event = $this->getEventWithUid($uid);
+      $uri = $event['uri'];
       $query = "DELETE FROM calendarobjects WHERE uid=".$this->sqlite->quote_string($uid);
       $res = $this->sqlite->query($query);
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'deleted');
+      }
       return true;
+  }
+  
+  public function getSyncTokenForCalendar($calid)
+  {
+      $query = "SELECT synctoken FROM calendars WHERE id=".$this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      $row = $this->sqlite->res2row($res);
+      if(isset($row['synctoken']))
+          return $row['synctoken'];
+      return false;
+  }
+  
+  public function operationNameToOperation($operationName)
+  {
+      switch($operationName)
+      {
+          case 'added':
+              return 1;
+          break;
+          case 'modified':
+              return 2;
+          break;
+          case 'deleted':
+              return 3;
+          break;
+      }
+      return false;
+  }
+  
+  private function updateSyncTokenLog($calid, $uri, $operation)
+  {
+      $currentToken = $this->getSyncTokenForCalendar($calid);
+      $operationCode = $this->operationNameToOperation($operation);
+      if(($operationCode === false) || ($currentToken === false))
+          return false;
+      $values = array($uri,
+                      $currentToken,
+                      $calid,
+                      $operationCode
+      );
+      $query = "INSERT INTO calendarchanges (uri, synctoken, calendarid, operation) VALUES(".
+               $this->sqlite->quote_and_join($values, ',').")";
+      $res = $this->sqlite->query($query);
+      if($res === false)
+        return false;
+      $currentToken++;
+      $query = "UPDATE calendars SET synctoken=".$this->sqlite->quote_string($currentToken)." WHERE id=".
+               $this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      return ($res !== false);
   }
   
 }
