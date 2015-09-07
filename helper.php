@@ -242,6 +242,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       $uid = $params['uid'];
       $event = $this->getEventWithUid($uid);
+      $calid = $event['calendarid'];
       $uri = $event['uri'];
       $query = "DELETE FROM calendarobjects WHERE uid=".$this->sqlite->quote_string($uid);
       $res = $this->sqlite->query($query);
