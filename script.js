@@ -194,6 +194,44 @@ var dw_davcal__modals = {
         }        
     },
     
+    checkEvents : function() {
+        var allDay = jQuery('#dw_davcal__allday_edit').prop('checked');
+        var startDate = moment(jQuery('#dw_davcal__eventfrom_edit').val(), 'YYYY-MM-DD');
+        var endDate = moment(jQuery('#dw_davcal__eventto_edit').val(), 'YYYY-MM-DD');
+        if(!allDay)
+        {
+            var startTime = moment.duration(jQuery('#dw_davcal__eventfromtime_edit').val());
+            var endTime = moment.duration(jQuery('#dw_davcal__eventtotime_edit').val());
+            startDate.add(startTime);
+            endDate.add(endTime);
+        }
+        if(!startDate.isValid())
+        {
+            dw_davcal__modals.msg = LANG.plugins.davcal['start_date_invalid'];
+            dw_davcal__modals.showDialog(false);
+            return false;
+        }
+        if(!endDate.isValid())
+        {
+            dw_davcal__modals.msg = LANG.plugins.davcal['end_date_invalid'];
+            dw_davcal__modals.showDialog(false);
+            return false;
+        }
+        if(endDate.isBefore(startDate))
+        {
+            dw_davcal__modals.msg = LANG.plugins.davcal['end_date_before_start_date'];
+            dw_davcal__modals.showDialog(false);
+            return false;
+        }
+        if(!allDay && endDate.isSame(startDate))
+        {
+            dw_davcal__modals.msg = LANG.plugins.davcal['end_date_is_same_as_start_date'];
+            dw_davcal__modals.showDialog(false);
+            return false;
+        }
+        return true;
+    },
+    
     showEditEventDialog : function(event, edit) {
         if(dw_davcal__modals.$editEventDialog)
             return;

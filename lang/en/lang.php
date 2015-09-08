@@ -32,3 +32,7 @@ $lang['js']['use_lang_tz'] = 'Use Timezone from language setting';
 $lang['js']['only_workweek'] = 'Show only Work Week';
 $lang['js']['sync_url'] = 'DAVCal URL';
 $lang['js']['error_retrieving_data'] = 'There was an error retrieving data from the calendar server.';
+$lang['js']['start_date_invalid'] = 'Start date/time is invalid.';
+$lang['js']['end_date_invalid'] = 'End date/time is invalid.';
+$lang['js']['end_date_before_start_date'] = 'End date/time is before start date/time.';
+$lang['js']['end_date_is_same_as_start_date'] = 'End date/time is equal to start date/time.';
