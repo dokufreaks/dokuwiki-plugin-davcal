@@ -27,7 +27,6 @@
 #dw_davcal__confirm,
 #dw_davcal__info,
 #dw_davcal__edit,
-#dw_davcal__settings,
 #dw_davcal__createnew {
     position: absolute;
     top: 50%;
@@ -35,4 +34,13 @@
     width: 300px;
     height: 260px;
     margin:-130px 0 0 -150px;
+}
+
+#dw_davcal__settings {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 350px;
+    height: 280px;
+    margin:-140px 0 0 -175px;
 }

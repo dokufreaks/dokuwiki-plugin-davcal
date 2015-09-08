@@ -76,8 +76,17 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
      */
     function render($format, &$R, $data) {
         if($format != 'xhtml') return false;
+        $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
         
         $R->doc .= '<div id="fullCalendar"></div>';
+        $R->doc .= '<div id="fullCalendarTimezoneList" class="fullCalendarTimezoneList" style="display:none">';
+        $R->doc .= '<select id="fullCalendarTimezoneDropdown">';
+        $R->doc .= '<option value="local">'.$this->getLang('local_time').'</option>';
+        foreach($tzlist as $tz)
+        {
+            $R->doc .= '<option value="'.$tz.'">'.$tz.'</option>';
+        }
+        $R->doc .= '</select></div>';
         $R->doc .= '<div class="fullCalendarSettings"><a href="#" class="fullCalendarSettings"><img src="'.DOKU_URL.'lib/plugins/davcal/images/settings.png'.'">'.$this->getLang('settings').'</a></div>';
      
     }

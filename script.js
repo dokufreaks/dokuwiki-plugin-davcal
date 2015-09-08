@@ -51,7 +51,7 @@ jQuery(function() {
                 var we = true;
                 if(data['settings']['weeknumbers'] == 1)
                     wknum = true;
-                if(data['settings']['timezne'] !== '')
+                if(data['settings']['timezone'] !== '')
                     tz = data['settings']['timezone'];
                 if(data['settings']['workweek'] == 1)
                     we = false;
@@ -82,7 +82,7 @@ jQuery(function() {
                     },
                     lang: JSINFO.plugin.davcal['language'],
                     weekNumbers: wknum,
-                    timeZone: tz,
+                    timezone: tz,
                     weekends: we,
                 });
             }
@@ -109,7 +109,7 @@ var dw_davcal__modals = {
         var dialogButtons = {};
         dialogButtons[LANG.plugins.davcal['save']] = function() {
             var postArray = { };
-            jQuery("input[class=dw_davcal__settings]").each(function() {
+            jQuery("input[class=dw_davcal__settings], select[class=dw_davcal__settings]").each(function() {
               if(jQuery(this).attr('type') == 'checkbox')
               {
                   postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
@@ -154,8 +154,8 @@ var dw_davcal__modals = {
        })
        .html(
             '<div><table>' +
-            //'<tr><td>' + LANG.plugins.davcal['use_lang_tz'] + '</td><td><input type="checkbox" name="use_lang_tz" id+"dw_davcal__settings_use_lang_tz" class="dw_davcal__settings"></td></tr>' + 
-            '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td>Timezone Dropdown</td></tr>' +
+            //'<tr><td>' + LANG.plugins.davcal['use_lang_tz'] + '</td><td><input type="checkbox" name="use_lang_tz" id="dw_davcal__settings_use_lang_tz" class="dw_davcal__settings"></td></tr>' + 
+            '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
             '</table>' +
@@ -171,8 +171,17 @@ var dw_davcal__modals = {
         jQuery('#dw_davcal__settings .ui-dialog-titlebar-close').click(function(){
           dw_davcal__modals.hideSettingsDialog();
         });
+        
+        var $tzdropdown = jQuery('#dw_davcal__settings_timezone');
+        jQuery('#fullCalendarTimezoneList option').each(function() {
+            jQuery('<option />', {value: jQuery(this).val(), 
+                    text: jQuery(this).text()}).appendTo($tzdropdown);
+        });
+        
         if(dw_davcal__modals.settings)
         {
+            if(dw_davcal__modals.settings['timezone'] !== '')
+                jQuery('#dw_davcal__settings_timezone').val(dw_davcal__modals.settings['timezone']);
             if(dw_davcal__modals.settings['weeknumbers'] == 1)
                 jQuery('#dw_davcal__settings_weeknumbers').prop('checked', true);
             else

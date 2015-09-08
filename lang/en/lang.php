@@ -8,6 +8,7 @@ $lang['no_permission'] = 'You don\'t have permission to modify this calendar';
 $lang['settings'] = 'Settings/Sync';
 $lang['settings_saved'] = 'Settings saved successfully';
 $lang['error_saving'] = 'Error saving settings.';
+$lang['local_time'] = 'Local time (Browser based)';
 $lang['js']['create_new_event'] = 'Create new Event';
 $lang['js']['cancel'] = 'Cancel';
 $lang['js']['create'] = 'Create';

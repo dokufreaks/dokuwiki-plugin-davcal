@@ -53,9 +53,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $userid = $_SERVER['REMOTE_USER'];
       $this->sqlite->query("BEGIN TRANSACTION");
       
+      $query = "DELETE FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
+      $this->sqlite->query($query);
+      
       foreach($settings as $key => $value)
       {
-          $query = "INSERT OR REPLACE INTO calendarsettings (userid, key, value) VALUES (".
+          $query = "INSERT INTO calendarsettings (userid, key, value) VALUES (".
                    $this->sqlite->quote_string($userid).", ".
                    $this->sqlite->quote_string($key).", ".
                    $this->sqlite->quote_string($value).")";
@@ -71,8 +74,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       if(is_null($userid))
         $userid = $_SERVER['REMOTE_USER'];
-      
-      $settings = array();
+      // Some sane default settings
+      $settings = array(
+        'timezone' => 'local',
+        'weeknumbers' => '0',
+        'workweek' => '0'
+      );
       $query = "SELECT key, value FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
       $res = $this->sqlite->query($query);
       $arr = $this->sqlite->res2arr($res);
@@ -167,12 +174,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   public function addCalendarEntryToCalendarForPage($id, $user, $params)
   {
+      $settings = $this->getPersonalSettings($user);
+      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
+          $timezone = new \DateTimeZone($settings['timezone']);
+      else
+          $timezone = new \DateTimeZone('UTC');
       require_once('vendor/autoload.php');
       $vcalendar = new \Sabre\VObject\Component\VCalendar();
       $event = $vcalendar->add('VEVENT');
       $event->summary = $params['eventname'];
-      $dtStart = new \DateTime($params['eventfrom'], new \DateTimeZone('Europe/Vienna')); // FIXME: Timezone
-      $dtEnd = new \DateTime($params['eventto'], new \DateTimeZone('Europe/Vienna')); // FIXME: Timezone
+      $dtStart = new \DateTime($params['eventfrom'], $timezone);
+      $dtEnd = new \DateTime($params['eventto'], $timezone);
       $event->DTSTART = $dtStart;
       $event->DTEND = $dtEnd;
       $calid = $this->getCalendarIdForPage($id);
@@ -204,6 +216,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   public function getEventsWithinDateRange($id, $user, $startDate, $endDate)
   {
+      $settings = $this->getPersonalSettings($user);
+      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
+          $timezone = new \DateTimeZone($settings['timezone']);
+      else
+          $timezone = new \DateTimeZone('UTC');
       $data = array();
       require_once('vendor/autoload.php');
       $calid = $this->getCalendarIdForPage($id);
@@ -222,9 +239,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               $vcal = \Sabre\VObject\Reader::read($row['calendardata']);
               $start = $vcal->VEVENT->DTSTART->getDateTime();
               $end = $vcal->VEVENT->DTEND->getDateTime();
+              $start->setTimezone($timezone);
+              $end->setTimezone($timezone);
               $summary = (string)$vcal->VEVENT->summary;
-              $data[] = array("title" => $summary, "start" => $start->format(\DateTime::W3C),
-                              "end" => $end->format(\DateTime::W3C),
+              $data[] = array("title" => $summary, "start" => $start->format(\DateTime::ATOM),
+                              "end" => $end->format(\DateTime::ATOM),
                               "id" => $row['uid']);
           }
       }
@@ -242,6 +261,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   
   public function editCalendarEntryForPage($id, $user, $params)
   {
+      $settings = $this->getPersonalSettings($user);
+      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
+          $timezone = new \DateTimeZone($settings['timezone']);
+      else
+          $timezone = new \DateTimeZone('UTC');
       $uid = $params['uid'];
       $event = $this->getEventWithUid($uid);
       require_once('vendor/autoload.php');
@@ -251,8 +275,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $event['calendarid'];
       $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
       $vcal->VEVENT->summary = $params['eventname'];
-      $dtStart = new \DateTime($params['eventfrom'], new \DateTimeZone('Europe/Vienna')); // FIXME: Timezone
-      $dtEnd = new \DateTime($params['eventto'], new \DateTimeZone('Europe/Vienna')); // FIXME: Timezone
+      $dtStart = new \DateTime($params['eventfrom'], $timezone);
+      $dtEnd = new \DateTime($params['eventto'], $timezone);
       $vcal->VEVENT->DTSTART = $dtStart;
       $vcal->VEVENT->DTEND = $dtEnd;
       $now = new DateTime();
