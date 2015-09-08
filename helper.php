@@ -270,13 +270,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $this->getCalendarIdForPage($id);
       $startTs = new \DateTime($startDate);
       $endTs = new \DateTime($endDate);
-      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE (calendarid=".
-                $this->sqlite->quote_string($calid)." AND firstoccurence > ".
-                $this->sqlite->quote_string($startTs->getTimestamp())." AND firstoccurence < ".
-                $this->sqlite->quote_string($endTs->getTimestamp()).") OR (calendarid=".
-                $this->sqlite->quote_string($calid)." AND lastoccurence > ".
-                $this->sqlite->quote_string($startTs->getTimestamp())." AND lastoccurence < ".
-                $this->sqlite->quote_string($endTs->getTimestamp()).")";
+      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid=".
+                $this->sqlite->quote_string($calid)." AND firstoccurence < ".
+                $this->sqlite->quote_string($endTs->getTimestamp())." AND lastoccurence > ".
+                $this->sqlite->quote_string($startTs->getTimestamp());
       $res = $this->sqlite->query($query);
       $arr = $this->sqlite->res2arr($res);
       foreach($arr as $row)
@@ -285,35 +282,63 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           {
               $entry = array();
               $vcal = \Sabre\VObject\Reader::read($row['calendardata']);
-              $start = $vcal->VEVENT->DTSTART;
-              if($start !== null)
+              $recurrence = $vcal->VEVENT->RRULE;
+              if($recurrence != null)
               {
-                $dtStart = $start->getDateTime();
-                $dtStart->setTimezone($timezone);
-                $entry['start'] = $dtStart->format(\DateTime::ATOM);
-                if($start['VALUE'] == 'DATE')
-                  $entry['allDay'] = true;
-                else
-                  $entry['allDay'] = false;
+                  $rEvents = new \Sabre\VObject\Recur\EventIterator(array($vcal->VEVENT));
+                  $rEvents->rewind();
+                  $done = false;
+                  while($rEvents->valid() && !$done)
+                  {
+                      $event = $rEvents->getEventObject();
+                      if(($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()) &&
+                         ($rEvents->getDtEnd()->getTimestamp() > $endTs->getTimestamp()))
+                        $done = true;
+                      if($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp())
+                      {
+                          $rEvents->next();
+                          continue;
+                      }
+                      $data[] = $this->convertIcalDataToEntry($event, $timezone, $row['uid']);
+                      $rEvents->next();
+                  }
               }
-              $end = $vcal->VEVENT->DTEND;
-              if($end !== null)
-              {
-                $dtEnd = $end->getDateTime();
-                $dtEnd->setTimezone($timezone);
-                $entry['end'] = $dtEnd->format(\DateTime::ATOM);
-              }
-              $description = $vcal->VEVENT->DESCRIPTION;
-              if($description !== null)
-                $entry['description'] = (string)$description;
               else
-                $entry['description'] = '';
-              $entry['title'] = (string)$vcal->VEVENT->summary;
-              $entry['id'] = $row['uid']; 
-              $data[] = $entry;
+                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $timezone, $row['uid']);
           }
       }
       return $data;
+  }
+
+  private function convertIcalDataToEntry($event, $timezone, $uid)
+  {
+      $entry = array();
+      $start = $event->DTSTART;
+      if($start !== null)
+      {
+        $dtStart = $start->getDateTime();
+        $dtStart->setTimezone($timezone);
+        $entry['start'] = $dtStart->format(\DateTime::ATOM);
+        if($start['VALUE'] == 'DATE')
+          $entry['allDay'] = true;
+        else
+          $entry['allDay'] = false;
+      }
+      $end = $event->DTEND;
+      if($end !== null)
+      {
+        $dtEnd = $end->getDateTime();
+        $dtEnd->setTimezone($timezone);
+        $entry['end'] = $dtEnd->format(\DateTime::ATOM);
+      }
+      $description = $event->DESCRIPTION;
+      if($description !== null)
+        $entry['description'] = (string)$description;
+      else
+        $entry['description'] = '';
+      $entry['title'] = (string)$event->summary;
+      $entry['id'] = $uid;
+      return $entry;
   }
   
   public function getEventWithUid($uid)
