@@ -34,9 +34,9 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 350px;
-    height: 320px;
-    margin:-160px 0 0 -175px;
+    width: 370px;
+    height: 290px;
+    margin:-175px 0 0 -145px;
 }
 
 .dw_davcal__date {
@@ -45,4 +45,8 @@
 
 .dw_davcal__time {
     width: 50px;
+}
+
+.dw_davcal__text {
+    width: 220px;
 }

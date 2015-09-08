@@ -157,7 +157,7 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
+            '<tr><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
             '</table>' +
             '</div>' +
             '<div id="dw_davcal__ajaxsettings"></div>'
@@ -166,6 +166,10 @@ var dw_davcal__modals = {
        .attr('id','dw_davcal__settings')
        .show()
        .appendTo('.dokuwiki:first');
+       
+       jQuery('#dw_davcal__settings_syncurl').on('click', function() {
+           jQuery(this).select();
+       });
        
            // attach event handlers
         jQuery('#dw_davcal__settings .ui-dialog-titlebar-close').click(function(){
