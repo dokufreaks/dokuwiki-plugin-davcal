@@ -162,6 +162,7 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
+            '<tr><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>' +
             '</table>' +
             '</div>' +
             '<div id="dw_davcal__ajaxsettings"></div>'
@@ -179,6 +180,10 @@ var dw_davcal__modals = {
        
        jQuery('#dw_davcal__settings_syncurl').on('click', function() {
            jQuery(this).select();
+       });
+       
+       jQuery('#dw_davcal__settings_privateurl').on('click', function() {
+           jQuery(this).select(); 
        });
        
            // attach event handlers

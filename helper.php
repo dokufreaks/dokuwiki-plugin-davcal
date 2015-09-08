@@ -325,6 +325,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return $row;
   }
   
+  public function getAllCalendarEvents($calid)
+  {
+      $query = "SELECT calendardata, uid, componenttype, uri FROM calendarobjects WHERE calendarid=".
+               $this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      $arr = $this->sqlite->res2arr($res);
+      return $arr;
+  }
+  
   public function editCalendarEntryForPage($id, $user, $params)
   {
       $settings = $this->getPersonalSettings($user);
@@ -476,6 +485,70 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       $syncurl = DOKU_URL.'lib/plugins/davcal/calendarserver.php/calendars/'.$user.'/'.$calsettings['uri'];
       return $syncurl; 
+  }
+  
+  public function getPrivateURLForPage($id)
+  {
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      
+      return $this->getPrivateURLForCalendar($calid);
+  }
+  
+  public function getPrivateURLForCalendar($calid)
+  {
+      $query = "SELECT url FROM calendartoprivateurlmapping WHERE calid=".$this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      $row = $this->sqlite->res2row($res);
+      if(!isset($row['url']))
+      {
+          $url = uniqid("dokuwiki-").".ics";
+          $values = array(
+                $url,
+                $calid
+          );
+          $query = "INSERT INTO calendartoprivateurlmapping (url, calid) VALUES(".
+                $this->sqlite->quote_and_join($values, ", ").")";
+          $res = $this->sqlite->query($query);
+          if($res === false)
+            return false;
+      }
+      else
+      {
+          $url = $row['url'];
+      }
+      return DOKU_URL.'lib/plugins/davcal/calendarserver.php/calendars/'.$url;
+  }
+  
+  public function getCalendarForPrivateURL($url)
+  {
+      $query = "SELECT calid FROM calendartoprivateurlmapping WHERE url=".$this->sqlite->quote_string($url);
+      $res = $this->sqlite->query($query);
+      $row = $this->sqlite->res2row($res);
+      if(!isset($row['calid']))
+        return false;
+      return $row['calid'];
+  }
+  
+  public function getCalendarAsICSFeed($calid)
+  {
+      $calSettings = $this->getCalendarSettings($calid);
+      if($calSettings === false)
+        return false;
+      $events = $this->getAllCalendarEvents($calid);
+      if($events === false)
+        return false;
+      
+      $out = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//DAVCal//DAVCal for DokuWiki//EN\nCALSCALE:GREGORIAN\nX-WR-CALNAME:";
+      $out .= $calSettings['displayname']."\n";
+      foreach($events as $event)
+      {
+          $out .= rtrim($event['calendardata']);
+          $out .= "\n";
+      }
+      $out .= "END:VCALENDAR\n";
+      return $out;
   }
   
 }
