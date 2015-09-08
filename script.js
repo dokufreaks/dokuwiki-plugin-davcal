@@ -329,7 +329,7 @@ var dw_davcal__modals = {
                       postArray[jQuery(this).prop('name')] = jQuery(this).val();
                   }
                 });
-                jQuery('#dw_davcal__ajaxnew').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
+                jQuery('#dw_davcal__ajaxedit').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
                 jQuery.post(
                     DOKU_BASE + 'lib/exe/ajax.php',
                     {
