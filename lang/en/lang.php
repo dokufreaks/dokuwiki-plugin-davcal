@@ -36,3 +36,4 @@ $lang['js']['start_date_invalid'] = 'Start date/time is invalid.';
 $lang['js']['end_date_invalid'] = 'End date/time is invalid.';
 $lang['js']['end_date_before_start_date'] = 'End date/time is before start date/time.';
 $lang['js']['end_date_is_same_as_start_date'] = 'End date/time is equal to start date/time.';
+$lang['js']['description'] = 'Description';

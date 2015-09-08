@@ -251,7 +251,7 @@ var dw_davcal__modals = {
                 if(!dw_davcal__modals.checkEvents())
                   return;
                 var postArray = { };
-                jQuery("input.dw_davcal__editevent").each(function() {
+                jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
                       postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
@@ -311,6 +311,7 @@ var dw_davcal__modals = {
             calEvent.end.minute(0);
             calEvent.allDay = false;
             calEvent.title = '';
+            calEvent.description = '';
             calEvent.id = '0';
             title = LANG.plugins.davcal['create_new_event'];
             dialogButtons[LANG.plugins.davcal['create']] = function() {
@@ -318,7 +319,7 @@ var dw_davcal__modals = {
                   return;
 
                 var postArray = { };
-                jQuery("input.dw_davcal__editevent").each(function() {
+                jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
                       postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
@@ -365,6 +366,7 @@ var dw_davcal__modals = {
        })
        .html(
             '<div><table><tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" id="dw_davcal__eventname_edit" name="eventname" class="dw_davcal__editevent"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['description'] + '</td><td><textarea name="eventdescription" id="dw_davcal__eventdescription_edit" class="dw_davcal__editevent dw_davcal__text"></textarea></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" name="eventfrom" id="dw_davcal__eventfrom_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventfromtime" id="dw_davcal__eventfromtime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventtotime" id="dw_davcal__eventtotime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday_edit" class="dw_davcal__editevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
@@ -382,6 +384,7 @@ var dw_davcal__modals = {
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
        jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
        jQuery('#dw_davcal__eventfromtime_edit').val(calEvent.start.format('HH:mm'));
+       jQuery('#dw_davcal__eventdescription_edit').val(calEvent.description);
        if(calEvent.allDay && (calEvent.end === null))
        {
            jQuery('#dw_davcal__eventto_edit').val(calEvent.start.format('YYYY-MM-DD'));

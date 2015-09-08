@@ -20,8 +20,7 @@
     padding-right: 0;
 }
 
-#dw_davcal__confirm,
-#dw_davcal__edit, {
+#dw_davcal__confirm {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -30,13 +29,14 @@
     margin:-130px 0 0 -150px;
 }
 
+#dw_davcal__edit,
 #dw_davcal__settings {
     position: absolute;
     top: 50%;
     left: 50%;
     width: 370px;
-    height: 290px;
-    margin:-175px 0 0 -145px;
+    height: 300px;
+    margin:-175px 0 0 -150px;
 }
 
 .dw_davcal__date {

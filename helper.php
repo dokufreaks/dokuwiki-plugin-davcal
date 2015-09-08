@@ -194,6 +194,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $uuid = \Sabre\VObject\UUIDUtil::getUUID();
       $event->add('UID', $uuid);
       $event->summary = $params['eventname'];
+      $description = $params['eventdescription'];
+      if($description !== '')
+        $event->add('DESCRIPTION', $description);
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
       $event->add('DTSTAMP', $dtStamp);
       $event->add('CREATED', $dtStamp);
@@ -296,11 +299,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               {
                 $dtEnd = $end->getDateTime();
                 $dtEnd->setTimezone($timezone);
-                // Subtract the plus one day that was added earlier
-                //if($entry['allDay'] === true)
-                //  $dtEnd->sub(new \DateInterval('P1D'));
                 $entry['end'] = $dtEnd->format(\DateTime::ATOM);
               }
+              $description = $vcal->VEVENT->DESCRIPTION;
+              if($description !== null)
+                $entry['description'] = (string)$description;
+              else
+                $entry['description'] = '';
               $entry['title'] = (string)$vcal->VEVENT->summary;
               $entry['id'] = $row['uid']; 
               $data[] = $entry;
@@ -340,10 +345,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $vevent = $vcal->VEVENT;
       $vevent->summary = $params['eventname'];
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
+      $description = $params['eventdescription'];
+      $vevent->remove('DESCRIPTION');      
       $vevent->remove('DTSTAMP');
       $vevent->remove('LAST-MODIFIED');
       $vevent->add('DTSTAMP', $dtStamp);
-      $vevent->add('LAST-MODIFIED', $dtStamp);      
+      $vevent->add('LAST-MODIFIED', $dtStamp);
+      if($description !== '')
+        $vevent->add('DESCRIPTION', $description);      
       $dtStart = new \DateTime();
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
       if($params['allday'] != '1')
