@@ -3,9 +3,7 @@
 
 
 /* modal windows */
-#dw_davcal__createnew,
 #dw_davcal__edit,
-#dw_davcal__info,
 #dw_davcal__settings,
 #dw_davcal__confirm {
     position: absolute;
@@ -16,18 +14,14 @@
 }
 
 #dw_davcal__edit .ui-dialog-content,
-#dw_davcal__info .ui-dialog-content,
 #dw_davcal__confirm .ui-dialog-content,
-#dw_davcal__settings .ui-dialog-content,
-#dw_davcal__createnew .ui-dialog-content {
+#dw_davcal__settings .ui-dialog-content, {
     padding-left: 0;
     padding-right: 0;
 }
 
 #dw_davcal__confirm,
-#dw_davcal__info,
-#dw_davcal__edit,
-#dw_davcal__createnew {
+#dw_davcal__edit, {
     position: absolute;
     top: 50%;
     left: 50%;

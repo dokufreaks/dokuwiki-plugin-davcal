@@ -31,3 +31,4 @@ $lang['js']['weeknumbers'] = 'Week Numbers';
 $lang['js']['use_lang_tz'] = 'Use Timezone from language setting';
 $lang['js']['only_workweek'] = 'Show only Work Week';
 $lang['js']['sync_url'] = 'DAVCal URL';
+$lang['js']['error_retrieving_data'] = 'There was an error retrieving data from the calendar server.';

@@ -58,10 +58,10 @@ jQuery(function() {
                 // Initialize the davcal popup
                 var res = jQuery('#fullCalendar').fullCalendar({
                     dayClick: function(date, jsEvent, view) {
-                        dw_davcal__modals.showNewEventDialog(date);
+                        dw_davcal__modals.showEditEventDialog(date, false);
                     },
                     eventClick: function(calEvent, jsEvent, view) {
-                        dw_davcal__modals.showEditEventDialog(calEvent);
+                        dw_davcal__modals.showEditEventDialog(calEvent, true);
                     },
                     events: {
                         url: DOKU_BASE + 'lib/exe/ajax.php',
@@ -72,7 +72,8 @@ jQuery(function() {
                             id: JSINFO.id
                         },
                         error: function() {
-                            //alert('there was an error retrieving calendar data');
+                            dw_davcal__modals.msg = LANG.plugins.davcal['error_retrieving_data'];
+                            dw_davcal__modals.showDialog(false);
                         }
                     },
                     header: {
@@ -91,10 +92,8 @@ jQuery(function() {
 });
 
 var dw_davcal__modals = {
-    $newEventDialog : null,
     $editEventDialog: null,
-    $infoDialog: null,
-    $confirmDialog: null,
+    $dialog: null,
     $settingsDialog: null,
     msg: null,
     completeCb: null,
@@ -195,71 +194,130 @@ var dw_davcal__modals = {
         }        
     },
     
-    showEditEventDialog : function(calEvent) {
+    showEditEventDialog : function(event, edit) {
         if(dw_davcal__modals.$editEventDialog)
             return;
-            
+         
+        var title = '';   
         var dialogButtons = {};
-        dialogButtons[LANG.plugins.davcal['edit']] = function() {
-            var postArray = { };
-            jQuery("input.dw_davcal__editevent").each(function() {
-              if(jQuery(this).attr('type') == 'checkbox')
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
-              }
-              else
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).val();
-              }
-            });
-            jQuery('#dw_davcal__ajaxedit').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
-            jQuery.post(
-                DOKU_BASE + 'lib/exe/ajax.php',
-                {
-                    call: 'plugin_davcal',
-                    id: JSINFO.id,
-                    action: 'editEvent',
-                    params: postArray
-                },
-                function(data)
-                {
-                    var result = data['result'];
-                    var html = data['html'];
-                    jQuery('#dw_davcal__ajaxedit').html(html);
-                    if(result === true)
+        var calEvent = [];
+        if(edit)
+        {
+            calEvent = event;
+            title = LANG.plugins.davcal['edit_event'];
+            dialogButtons[LANG.plugins.davcal['edit']] = function() {
+                if(!dw_davcal__modals.checkEvents())
+                  return;
+                var postArray = { };
+                jQuery("input.dw_davcal__editevent").each(function() {
+                  if(jQuery(this).attr('type') == 'checkbox')
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
+                  }
+                  else
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).val();
+                  }
+                });
+                jQuery('#dw_davcal__ajaxedit').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
+                jQuery.post(
+                    DOKU_BASE + 'lib/exe/ajax.php',
+                    {
+                        call: 'plugin_davcal',
+                        id: JSINFO.id,
+                        action: 'editEvent',
+                        params: postArray
+                    },
+                    function(data)
+                    {
+                        var result = data['result'];
+                        var html = data['html'];
+                        jQuery('#dw_davcal__ajaxedit').html(html);
+                        if(result === true)
+                        {
+                            jQuery('#fullCalendar').fullCalendar('refetchEvents');
+                            dw_davcal__modals.hideEditEventDialog();
+                        }
+                    }
+                );
+            };
+            dialogButtons[LANG.plugins.davcal['delete']] = function() {
+                dw_davcal__modals.action = 'deleteEvent';
+                dw_davcal__modals.msg = LANG.plugins.davcal['really_delete_this_event'];
+                dw_davcal__modals.completeCb = function(data) {
+                    if(data.result == false)
+                    {
+                        dw_davcal__modals.msg = data.errmsg;
+                        dw_davcal__modals.showDialog(false);
+                    }
+                    else
                     {
                         jQuery('#fullCalendar').fullCalendar('refetchEvents');
                         dw_davcal__modals.hideEditEventDialog();
                     }
-                }
-            );
-        };
+                };
+                dw_davcal__modals.showDialog(true);
+            };
+        }
+        else
+        {
+            calEvent.start = event;
+            calEvent.end = moment(event);
+            calEvent.start.hour(12);
+            calEvent.start.minute(0);
+            calEvent.end.hour(13);
+            calEvent.end.minute(0);
+            calEvent.allDay = false;
+            calEvent.title = '';
+            calEvent.id = '0';
+            title = LANG.plugins.davcal['create_new_event'];
+            dialogButtons[LANG.plugins.davcal['create']] = function() {
+                if(!dw_davcal__modals.checkEvents())
+                  return;
+
+                var postArray = { };
+                jQuery("input.dw_davcal__editevent").each(function() {
+                  if(jQuery(this).attr('type') == 'checkbox')
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
+                  }
+                  else
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).val();
+                  }
+                });
+                jQuery('#dw_davcal__ajaxnew').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
+                jQuery.post(
+                    DOKU_BASE + 'lib/exe/ajax.php',
+                    {
+                        call: 'plugin_davcal',
+                        id: JSINFO.id,
+                        action: 'newEvent',
+                        params: postArray
+                    },
+                    function(data)
+                    {
+                        var result = data['result'];
+                        var html = data['html'];
+                        jQuery('#dw_davcal__ajaxedit').html(html);
+                        if(result === true)
+                        {
+                            jQuery('#fullCalendar').fullCalendar('refetchEvents');
+                            dw_davcal__modals.hideEditEventDialog();
+                        }
+                    }
+                );
+            };
+        }
         dialogButtons[LANG.plugins.davcal['cancel']] = function() {
             dw_davcal__modals.hideEditEventDialog();
-        };
-        dialogButtons[LANG.plugins.davcal['delete']] = function() {
-            dw_davcal__modals.action = 'deleteEvent';
-            dw_davcal__modals.msg = LANG.plugins.davcal['really_delete_this_event'];
-            dw_davcal__modals.completeCb = function(data) {
-                if(data.result == false)
-                {
-                    dw_davcal__modals.msg = data.errmsg;
-                    dw_davcal__modals.showInfoDialog();
-                }
-                else
-                {
-                    jQuery('#fullCalendar').fullCalendar('refetchEvents');
-                    dw_davcal__modals.hideEditEventDialog();
-                }
-            };
-            dw_davcal__modals.showConfirmDialog();
         };
         dw_davcal__modals.uid = calEvent.id;
         dw_davcal__modals.$editEventDialog = jQuery(document.createElement('div'))
        .dialog({
            autoOpen: false,
            draggable: true,
-           title: LANG.plugins.davcal['edit_event'],
+           title: title,
            resizable: true,         
            buttons: dialogButtons,
        })
@@ -340,138 +398,49 @@ var dw_davcal__modals = {
         jQuery('#dw_davcal__allday_edit').change();
     },
     
-    showNewEventDialog : function(date) {
-        if(dw_davcal__modals.$newEventDialog)
-            return;
-        var dialogButtons = {};
-        dialogButtons[LANG.plugins.davcal['create']] = function() {
-            var postArray = { };
-            jQuery("input.dw_davcal__newevent").each(function() {
-              if(jQuery(this).attr('type') == 'checkbox')
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
-              }
-              else
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).val();
-              }
-            });
-            jQuery('#dw_davcal__ajaxnew').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
-            jQuery.post(
-                DOKU_BASE + 'lib/exe/ajax.php',
-                {
-                    call: 'plugin_davcal',
-                    id: JSINFO.id,
-                    action: 'newEvent',
-                    params: postArray
-                },
-                function(data)
-                {
-                    var result = data['result'];
-                    var html = data['html'];
-                    jQuery('#dw_davcal__ajaxnew').html(html);
-                    if(result === true)
-                    {
-                        jQuery('#fullCalendar').fullCalendar('refetchEvents');
-                        dw_davcal__modals.hideNewEventDialog();
-                    }
-                }
-            );
-        };
-        dialogButtons[LANG.plugins.davcal['cancel']] = function() {
-            dw_davcal__modals.hideNewEventDialog();
-        };
-        dw_davcal__modals.$newEventDialog = jQuery(document.createElement('div'))
-       .dialog({
-           autoOpen: false,
-           draggable: true,
-           title: LANG.plugins.davcal['create_new_event'],
-           resizable: true,         
-           buttons: dialogButtons,
-       })
-       .html(
-            '<div><table><tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" name="eventname" class="dw_davcal__newevent"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" value="' + date.format('YYYY-MM-DD') + '" name="eventfrom" id="dw_davcal__eventfrom" class="dw_davcal__newevent dw_davcal__date"><input type="text" value="12:00" name="eventfromtime" id="dw_davcal__eventfromtime" class="dw_davcal__newevent dw_davcal__time"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto"  value="' + date.format('YYYY-MM-DD') + '" id="dw_davcal__eventto" class="dw_davcal__newevent dw_davcal__date"><input type="text" name="eventtotime" value="12:00" id="dw_davcal__eventtotime" class="dw_davcal__newevent dw_davcal__time"></td></tr>' +
-            '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday" class="dw_davcal__newevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
-            '</table>' +
-            '</div>' +
-            '<div id="dw_davcal__ajaxnew"></div>'
-            )
-       .parent()
-       .attr('id','dw_davcal__createnew')
-       .show()
-       .appendTo('.dokuwiki:first');
-       
-           // attach event handlers
-        jQuery('#dw_davcal__createnew .ui-dialog-titlebar-close').click(function(){
-          dw_davcal__modals.hideNewEventDialog();
-        });
-        jQuery('#dw_davcal__eventfrom').datetimepicker({format:'YYYY-MM-DD',
-                                                      formatDate:'YYYY-MM-DD',
-                                                      datepicker: true,
-                                                      timepicker: false,
-                                                      });
-        jQuery('#dw_davcal__eventfromtime').datetimepicker({format:'HH:mm',
-                                                      formatTime:'HH:mm',
-                                                      datepicker: false,
-                                                      timepicker: true,
-                                                      step: 15});
-        jQuery('#dw_davcal__eventto').datetimepicker({format:'YYYY-MM-DD',
-                                                      formatDate:'YYYY-MM-DD',
-                                                      datepicker: true,
-                                                      timepicker: false,
-                                                      });
-        jQuery('#dw_davcal__eventtotime').datetimepicker({format:'HH:mm',
-                                                      formatTime:'HH:mm',
-                                                      datepicker: false,
-                                                      timepicker: true,
-                                                      step:15});
-        jQuery('#dw_davcal__allday').change(function() {
-            if(jQuery(this).is(":checked"))
-            {
-                jQuery('#dw_davcal__eventfromtime').prop('readonly', true);
-                jQuery('#dw_davcal__eventtotime').prop('readonly', true);
-            }
-            else
-            {
-                jQuery('#dw_davcal__eventfromtime').prop('readonly', false);
-                jQuery('#dw_davcal__eventtotime').prop('readonly', false);
-            }
-        });
-    },
-    
-    showConfirmDialog : function()
+    showDialog : function(confirm)
     {
         if(dw_davcal__modals.$confirmDialog)
             return;
         var dialogButtons = {};
-        dialogButtons[LANG.plugins.davcal['yes']] =  function() {
-                        jQuery.post(
-                            DOKU_BASE + 'lib/exe/ajax.php',
-                            {
-                                call: 'plugin_davcal',
-                                id: JSINFO.id,
-                                action: dw_davcal__modals.action,
-                                params: {
-                                    uid: dw_davcal__modals.uid
+        var title = '';
+        if(confirm)
+        {
+            title = LANG.plugins.davcal['confirmation'];
+            dialogButtons[LANG.plugins.davcal['yes']] =  function() {
+                            jQuery.post(
+                                DOKU_BASE + 'lib/exe/ajax.php',
+                                {
+                                    call: 'plugin_davcal',
+                                    id: JSINFO.id,
+                                    action: dw_davcal__modals.action,
+                                    params: {
+                                        uid: dw_davcal__modals.uid
+                                    }
+                                },
+                                function(data)
+                                {
+                                    dw_davcal__modals.completeCb(data);
                                 }
-                            },
-                            function(data)
-                            {
-                                dw_davcal__modals.completeCb(data);
-                            }
-                        );
-                        dw_davcal__modals.hideConfirmDialog();
-                };
-        dialogButtons[LANG.plugins.tagrevisions['cancel']] = function() {
-                        dw_davcal__modals.hideConfirmDialog();
-                };
-        dw_davcal__modals.$confirmDialog = jQuery(document.createElement('div'))
+                            );
+                            dw_davcal__modals.hideDialog();
+                    };
+            dialogButtons[LANG.plugins.tagrevisions['cancel']] = function() {
+                            dw_davcal__modals.hideDialog();
+                    };
+        }
+        else
+        {
+            title = LANG.plugins.davcal['info'];
+            dialogButtons[LANG.plugins.davcal['ok']] = function() {
+                 dw_davcal__modals.hideDialog();
+            };
+        }
+        dw_davcal__modals.$dialog = jQuery(document.createElement('div'))
             .dialog({
                 autoOpen: false,
                 draggable: true,
-                title: LANG.plugins.tagrevisions['confirmation'],
+                title: title,
                 resizable: true,
                 buttons: dialogButtons,
             })
@@ -485,43 +454,8 @@ var dw_davcal__modals = {
    
                  // attach event handlers
             jQuery('#dw_davcal__confirm .ui-dialog-titlebar-close').click(function(){
-                dw_davcal__modals.hideConfirmDialog();
+                dw_davcal__modals.hideDialog();
             });
-    },
-    
-    showInfoDialog : function() {
-       if(dw_davcal__modal.$infoDialog)
-            return;
-       var dialogButtons = {};
-       dialogButtons[LANG.plugins.davcal['ok']] = function() {
-                 dw_davcal__modals.hideInfoDialog();
-           };
-       dw_davcal__modals.$infoDialog = jQuery(document.createElement('div'))
-       .dialog({
-           autoOpen: false,
-           draggable: true,
-           title: LANG.plugins.davcal['info'],
-           resizable: true,         
-           buttons: dialogButtons,
-       })
-       .html(
-            '<div>' + dw_davcal__modals.msg + '</div>'
-            )
-       .parent()
-       .attr('id','dw_davcal__info')
-       .show()
-       .appendTo('.dokuwiki:first');
-       
-           // attach event handlers
-        jQuery('#dw_davcal__info .ui-dialog-titlebar-close').click(function(){
-          dw_davcal__modals.hideInfoDialog();
-        });
-    },         
-    
-    hideNewEventDialog : function() {
-        dw_davcal__modals.$newEventDialog.empty();
-        dw_davcal__modals.$newEventDialog.remove();
-        dw_davcal__modals.$newEventDialog = null;
     },
     
     hideEditEventDialog : function() {
@@ -530,16 +464,10 @@ var dw_davcal__modals = {
         dw_davcal__modals.$editEventDialog = null;
     },
     
-    hideInfoDialog : function() {
-        dw_davcal__modals.$infoDialog.empty();
-        dw_davcal__modals.$infoDialog.remove();
-        dw_davcal__modals.$infoDialog = null;
-    },
-    
-    hideConfirmDialog: function() {
-        dw_davcal__modals.$confirmDialog.empty();
-        dw_davcal__modals.$confirmDialog.remove();
-        dw_davcal__modals.$confirmDialog = null;
+    hideDialog: function() {
+        dw_davcal__modals.$dialog.empty();
+        dw_davcal__modals.$dialog.remove();
+        dw_davcal__modals.$dialog = null;
     },
     
     hideSettingsDialog: function() {
