@@ -518,7 +518,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           $url = $row['url'];
       }
-      return DOKU_URL.'lib/plugins/davcal/calendarserver.php/calendars/'.$url;
+      return DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
   }
   
   public function getCalendarForPrivateURL($url)
