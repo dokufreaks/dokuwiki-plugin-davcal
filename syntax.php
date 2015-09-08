@@ -57,7 +57,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         global $ID;
         $options = trim(substr($match,9,-2));
         $options = explode(',', $options);
-        $data = array('name' => '',
+        $data = array('name' => $ID,
                       'description' => $this->getLang('created_by_davcal'));
         foreach($options as $option)
         {
@@ -76,6 +76,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
      */
     function render($format, &$R, $data) {
         if($format != 'xhtml') return false;
+        global $ID;
         $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
         
         $R->doc .= '<div id="fullCalendar"></div>';

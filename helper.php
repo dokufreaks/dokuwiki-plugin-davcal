@@ -43,8 +43,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($calid === false)
         return $this->createCalendarForPage($name, $description, $id, $userid);
       
-      // Update the calendar name here
-      
+      $query = "UPDATE calendars SET displayname=".$this->sqlite->quote_string($name).", ".
+               "description=".$this->sqlite->quote_string($description)." WHERE ".
+               "id=".$this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      if($res !== false)
+        return true;
+      return false;
   }
   
   public function savePersonalSettings($settings, $userid = null)
@@ -179,14 +184,40 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone($settings['timezone']);
       else
           $timezone = new \DateTimeZone('UTC');
+      $startDate = explode('-', $params['eventfrom']);
+      $startTime = explode(':', $params['eventfromtime']);
+      $endDate = explode('-', $params['eventto']);
+      $endTime = explode(':', $params['eventtotime']);
       require_once('vendor/autoload.php');
       $vcalendar = new \Sabre\VObject\Component\VCalendar();
       $event = $vcalendar->add('VEVENT');
+      $uuid = \Sabre\VObject\UUIDUtil::getUUID();
+      $event->add('UID', $uuid);
       $event->summary = $params['eventname'];
-      $dtStart = new \DateTime($params['eventfrom'], $timezone);
-      $dtEnd = new \DateTime($params['eventto'], $timezone);
-      $event->DTSTART = $dtStart;
-      $event->DTEND = $dtEnd;
+      $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
+      $event->add('DTSTAMP', $dtStamp);
+      $event->add('CREATED', $dtStamp);
+      $event->add('LAST-MODIFIED', $dtStamp);
+      $dtStart = new \DateTime();
+      $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
+      if($params['allday'] != '1')
+        $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
+      $dtStart->setTimezone($timezone);
+      $dtEnd = new \DateTime();
+      $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
+      if($params['allday'] != '1')
+        $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
+      $dtEnd->setTimezone($timezone);
+      // According to the VCal spec, we need to add a whole day here
+      if($params['allday'] == '1')
+          $dtEnd->add(new \DateInterval('P1D'));
+      $dtStartEv = $event->add('DTSTART', $dtStart);
+      $dtEndEv = $event->add('DTEND', $dtEnd);
+      if($params['allday'] == '1')
+      {
+          $dtStartEv['VALUE'] = 'DATE';
+          $dtEndEv['VALUE'] = 'DATE';
+      }
       $calid = $this->getCalendarIdForPage($id);
       $uri = uniqid('dokuwiki-').'.ics';
       $now = new DateTime();
@@ -214,6 +245,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return false;
   }
 
+  public function getCalendarSettings($calid)
+  {
+      $query = "SELECT principaluri, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id=".$this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      $row = $this->sqlite->res2row($res);
+      return $row;
+  }
+
   public function getEventsWithinDateRange($id, $user, $startDate, $endDate)
   {
       $settings = $this->getPersonalSettings($user);
@@ -226,25 +265,45 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $this->getCalendarIdForPage($id);
       $startTs = new \DateTime($startDate);
       $endTs = new \DateTime($endDate);
-      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid=".
+      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE (calendarid=".
                 $this->sqlite->quote_string($calid)." AND firstoccurence > ".
                 $this->sqlite->quote_string($startTs->getTimestamp())." AND firstoccurence < ".
-                $this->sqlite->quote_string($endTs->getTimestamp());
+                $this->sqlite->quote_string($endTs->getTimestamp()).") OR (calendarid=".
+                $this->sqlite->quote_string($calid)." AND lastoccurence > ".
+                $this->sqlite->quote_string($startTs->getTimestamp())." AND lastoccurence < ".
+                $this->sqlite->quote_string($endTs->getTimestamp()).")";
       $res = $this->sqlite->query($query);
       $arr = $this->sqlite->res2arr($res);
       foreach($arr as $row)
       {
           if(isset($row['calendardata']))
           {
+              $entry = array();
               $vcal = \Sabre\VObject\Reader::read($row['calendardata']);
-              $start = $vcal->VEVENT->DTSTART->getDateTime();
-              $end = $vcal->VEVENT->DTEND->getDateTime();
-              $start->setTimezone($timezone);
-              $end->setTimezone($timezone);
-              $summary = (string)$vcal->VEVENT->summary;
-              $data[] = array("title" => $summary, "start" => $start->format(\DateTime::ATOM),
-                              "end" => $end->format(\DateTime::ATOM),
-                              "id" => $row['uid']);
+              $start = $vcal->VEVENT->DTSTART;
+              if($start !== null)
+              {
+                $dtStart = $start->getDateTime();
+                $dtStart->setTimezone($timezone);
+                $entry['start'] = $dtStart->format(\DateTime::ATOM);
+                if($start['VALUE'] == 'DATE')
+                  $entry['allDay'] = true;
+                else
+                  $entry['allDay'] = false;
+              }
+              $end = $vcal->VEVENT->DTEND;
+              if($end !== null)
+              {
+                $dtEnd = $end->getDateTime();
+                $dtEnd->setTimezone($timezone);
+                // Subtract the plus one day that was added earlier
+                //if($entry['allDay'] === true)
+                //  $dtEnd->sub(new \DateInterval('P1D'));
+                $entry['end'] = $dtEnd->format(\DateTime::ATOM);
+              }
+              $entry['title'] = (string)$vcal->VEVENT->summary;
+              $entry['id'] = $row['uid']; 
+              $data[] = $entry;
           }
       }
       return $data;
@@ -266,6 +325,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone($settings['timezone']);
       else
           $timezone = new \DateTimeZone('UTC');
+      $startDate = explode('-', $params['eventfrom']);
+      $startTime = explode(':', $params['eventfromtime']);
+      $endDate = explode('-', $params['eventto']);
+      $endTime = explode(':', $params['eventtotime']);
       $uid = $params['uid'];
       $event = $this->getEventWithUid($uid);
       require_once('vendor/autoload.php');
@@ -274,11 +337,35 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $uri = $event['uri'];
       $calid = $event['calendarid'];
       $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
-      $vcal->VEVENT->summary = $params['eventname'];
-      $dtStart = new \DateTime($params['eventfrom'], $timezone);
-      $dtEnd = new \DateTime($params['eventto'], $timezone);
-      $vcal->VEVENT->DTSTART = $dtStart;
-      $vcal->VEVENT->DTEND = $dtEnd;
+      $vevent = $vcal->VEVENT;
+      $vevent->summary = $params['eventname'];
+      $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
+      $vevent->remove('DTSTAMP');
+      $vevent->remove('LAST-MODIFIED');
+      $vevent->add('DTSTAMP', $dtStamp);
+      $vevent->add('LAST-MODIFIED', $dtStamp);      
+      $dtStart = new \DateTime();
+      $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
+      if($params['allday'] != '1')
+        $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
+      $dtStart->setTimezone($timezone);
+      $dtEnd = new \DateTime();
+      $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
+      if($params['allday'] != '1')
+        $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
+      $dtEnd->setTimezone($timezone);
+      // According to the VCal spec, we need to add a whole day here
+      if($params['allday'] == '1')
+          $dtEnd->add(new \DateInterval('P1D'));
+      $vevent->remove('DTSTART');
+      $vevent->remove('DTEND');
+      $dtStartEv = $vevent->add('DTSTART', $dtStart);
+      $dtEndEv = $vevent->add('DTEND', $dtEnd);
+      if($params['allday'] == '1')
+      {
+          $dtStartEv['VALUE'] = 'DATE';
+          $dtEndEv['VALUE'] = 'DATE';
+      }
       $now = new DateTime();
       $eventStr = $vcal->serialize();
       
@@ -315,9 +402,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   
   public function getSyncTokenForCalendar($calid)
   {
-      $query = "SELECT synctoken FROM calendars WHERE id=".$this->sqlite->quote_string($calid);
-      $res = $this->sqlite->query($query);
-      $row = $this->sqlite->res2row($res);
+      $row = $this->getCalendarSettings($calid);
       if(isset($row['synctoken']))
           return $row['synctoken'];
       return false;
@@ -361,6 +446,23 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                $this->sqlite->quote_string($calid);
       $res = $this->sqlite->query($query);
       return ($res !== false);
+  }
+  
+  public function getSyncUrlForPage($id, $user = null)
+  {
+      if(is_null($user))
+        $user = $_SERVER['REMOTE_USER'];
+      
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      
+      $calsettings = $this->getCalendarSettings($calid);
+      if(!isset($calsettings['uri']))
+        return false;
+      
+      $syncurl = DOKU_URL.'lib/plugins/davcal/calendarserver.php/calendars/'.$user.'/'.$calsettings['uri'];
+      return $syncurl; 
   }
   
 }

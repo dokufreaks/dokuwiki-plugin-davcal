@@ -158,6 +158,7 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
             '</table>' +
             '</div>' +
             '<div id="dw_davcal__ajaxsettings"></div>'
@@ -201,7 +202,7 @@ var dw_davcal__modals = {
         var dialogButtons = {};
         dialogButtons[LANG.plugins.davcal['edit']] = function() {
             var postArray = { };
-            jQuery("input[class=dw_davcal__editevent]").each(function() {
+            jQuery("input.dw_davcal__editevent").each(function() {
               if(jQuery(this).attr('type') == 'checkbox')
               {
                   postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
@@ -264,8 +265,8 @@ var dw_davcal__modals = {
        })
        .html(
             '<div><table><tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" id="dw_davcal__eventname_edit" name="eventname" class="dw_davcal__editevent"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" name="eventfrom" id="dw_davcal__eventfrom_edit" class="dw_davcal__editevent"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" name="eventfrom" id="dw_davcal__eventfrom_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventfromtime" id="dw_davcal__eventfromtime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventtotime" id="dw_davcal__eventtotime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday_edit" class="dw_davcal__editevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
             '</table>' +
             '<input type="hidden" name="uid" id="dw_davcal__uid_edit" class="dw_davcal__editevent">' +
@@ -279,34 +280,64 @@ var dw_davcal__modals = {
        
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
-       jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD HH:mm'));
-       jQuery('#dw_davcal__eventto_edit').val(calEvent.end.format('YYYY-MM-DD HH:mm'));
+       jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
+       jQuery('#dw_davcal__eventfromtime_edit').val(calEvent.start.format('HH:mm'));
+       if(calEvent.allDay && (calEvent.end === null))
+       {
+           jQuery('#dw_davcal__eventto_edit').val(calEvent.start.format('YYYY-MM-DD'));
+           jQuery('#dw_davcal__eventtotime_edit').val(calEvent.start.format('HH:mm'));
+       }
+       else if(calEvent.allDay)
+       {
+           endEvent = moment(calEvent.end);
+           endEvent.subtract(1, 'days');
+           jQuery('#dw_davcal__eventto_edit').val(endEvent.format('YYYY-MM-DD'));
+           jQuery('#dw_davcal__eventotime_edit').val(endEvent.format('HH:mm'));
+       }
+       else
+       {
+           jQuery('#dw_davcal__eventto_edit').val(calEvent.end.format('YYYY-MM-DD'));
+           jQuery('#dw_davcal__eventtotime_edit').val(calEvent.end.format('HH:mm'));
+       }
        jQuery('#dw_davcal__allday_edit').prop('checked', calEvent.allDay);
        
            // attach event handlers
         jQuery('#dw_davcal__edit .ui-dialog-titlebar-close').click(function(){
           dw_davcal__modals.hideEditEventDialog();
         });
-        jQuery('#dw_davcal__eventfrom_edit').datetimepicker({format:'YYYY-MM-DD HH:mm',
+        jQuery('#dw_davcal__eventfrom_edit').datetimepicker({format:'YYYY-MM-DD',
+                                                      formatDate:'YYYY-MM-DD',
+                                                      datepicker: true,
+                                                      timepicker: false,
+                                                      });
+        jQuery('#dw_davcal__eventfromtime_edit').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
-                                                      formatDate:'YYYY-MM-DD', 
+                                                      datepicker: false,
+                                                      timepicker: true,
                                                       step: 15});
-        jQuery('#dw_davcal__eventto_edit').datetimepicker({format:'YYYY-MM-DD HH:mm',
+        jQuery('#dw_davcal__eventto_edit').datetimepicker({format:'YYYY-MM-DD',
+                                                      formatDate:'YYYY-MM-DD',
+                                                      datepicker: true,
+                                                      timepicker: false,
+                                                      });
+        jQuery('#dw_davcal__eventtotime_edit').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
-                                                      formatDate:'YYYY-MM-DD', 
-                                                      step: 15});
+                                                      datepicker: false,
+                                                      timepicker: true,
+                                                      step:15});
         jQuery('#dw_davcal__allday_edit').change(function() {
             if(jQuery(this).is(":checked"))
             {
-                jQuery('#dw_davcal__eventfrom_edit').datetimepicker({timepicker: false});
-                jQuery('#dw_davcal__eventto_edit').datetimepicker({timepicker: false});
+                jQuery('#dw_davcal__eventfromtime_edit').prop('readonly', true);
+                jQuery('#dw_davcal__eventtotime_edit').prop('readonly', true);
             }
             else
             {
-                jQuery('#dw_davcal__eventfrom_edit').datetimepicker({timepicker: true});
-                jQuery('#dw_davcal__eventto_edit').datetimepicker({timepicker: true});
+                jQuery('#dw_davcal__eventfromtime_edit').prop('readonly', false);
+                jQuery('#dw_davcal__eventtotime_edit').prop('readonly', false);
             }
-        });        
+        });
+        jQuery('#dw_davcal__allday_edit').change();
     },
     
     showNewEventDialog : function(date) {
@@ -315,7 +346,7 @@ var dw_davcal__modals = {
         var dialogButtons = {};
         dialogButtons[LANG.plugins.davcal['create']] = function() {
             var postArray = { };
-            jQuery("input[class=dw_davcal__newevent]").each(function() {
+            jQuery("input.dw_davcal__newevent").each(function() {
               if(jQuery(this).attr('type') == 'checkbox')
               {
                   postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
@@ -360,8 +391,8 @@ var dw_davcal__modals = {
        })
        .html(
             '<div><table><tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" name="eventname" class="dw_davcal__newevent"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" value="' + date.format('YYYY-MM-DD') + ' 12:00" name="eventfrom" id="dw_davcal__eventfrom" class="dw_davcal__newevent"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto"  value="' + date.format('YYYY-MM-DD') + ' 12:00" id="dw_davcal__eventto" class="dw_davcal__newevent"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" value="' + date.format('YYYY-MM-DD') + '" name="eventfrom" id="dw_davcal__eventfrom" class="dw_davcal__newevent dw_davcal__date"><input type="text" value="12:00" name="eventfromtime" id="dw_davcal__eventfromtime" class="dw_davcal__newevent dw_davcal__time"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto"  value="' + date.format('YYYY-MM-DD') + '" id="dw_davcal__eventto" class="dw_davcal__newevent dw_davcal__date"><input type="text" name="eventtotime" value="12:00" id="dw_davcal__eventtotime" class="dw_davcal__newevent dw_davcal__time"></td></tr>' +
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday" class="dw_davcal__newevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
             '</table>' +
             '</div>' +
@@ -376,24 +407,36 @@ var dw_davcal__modals = {
         jQuery('#dw_davcal__createnew .ui-dialog-titlebar-close').click(function(){
           dw_davcal__modals.hideNewEventDialog();
         });
-        jQuery('#dw_davcal__eventfrom').datetimepicker({format:'YYYY-MM-DD HH:mm',
+        jQuery('#dw_davcal__eventfrom').datetimepicker({format:'YYYY-MM-DD',
+                                                      formatDate:'YYYY-MM-DD',
+                                                      datepicker: true,
+                                                      timepicker: false,
+                                                      });
+        jQuery('#dw_davcal__eventfromtime').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
-                                                      formatDate:'YYYY-MM-DD', 
+                                                      datepicker: false,
+                                                      timepicker: true,
                                                       step: 15});
-        jQuery('#dw_davcal__eventto').datetimepicker({format:'YYYY-MM-DD HH:mm',
+        jQuery('#dw_davcal__eventto').datetimepicker({format:'YYYY-MM-DD',
+                                                      formatDate:'YYYY-MM-DD',
+                                                      datepicker: true,
+                                                      timepicker: false,
+                                                      });
+        jQuery('#dw_davcal__eventtotime').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
-                                                      formatDate:'YYYY-MM-DD', 
-                                                      step: 15});
+                                                      datepicker: false,
+                                                      timepicker: true,
+                                                      step:15});
         jQuery('#dw_davcal__allday').change(function() {
             if(jQuery(this).is(":checked"))
             {
-                jQuery('#dw_davcal__eventfrom').datetimepicker({timepicker: false});
-                jQuery('#dw_davcal__eventto').datetimepicker({timepicker: false});
+                jQuery('#dw_davcal__eventfromtime').prop('readonly', true);
+                jQuery('#dw_davcal__eventtotime').prop('readonly', true);
             }
             else
             {
-                jQuery('#dw_davcal__eventfrom').datetimepicker({timepicker: true});
-                jQuery('#dw_davcal__eventto').datetimepicker({timepicker: true});
+                jQuery('#dw_davcal__eventfromtime').prop('readonly', false);
+                jQuery('#dw_davcal__eventtotime').prop('readonly', false);
             }
         });
     },

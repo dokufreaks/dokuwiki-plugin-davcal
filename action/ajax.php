@@ -91,6 +91,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getSettings':
               $data['result'] = true;
               $data['settings'] = $this->hlp->getPersonalSettings($user);
+              $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($id, $user);
           break;
           case 'saveSettings':
               $settings = array();
