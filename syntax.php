@@ -58,7 +58,8 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         $options = trim(substr($match,9,-2));
         $options = explode(',', $options);
         $data = array('name' => $ID,
-                      'description' => $this->getLang('created_by_davcal'));
+                      'description' => $this->getLang('created_by_davcal'),
+                      'id' => $ID);
         foreach($options as $option)
         {
             list($key, $val) = explode('=', $option);
@@ -66,9 +67,10 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
             $val = trim($val);
             $data[$key] = $val;
         }
-        $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $_SERVER['REMOTE_USER']);
+        if($data['id'] === $ID)
+            $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $_SERVER['REMOTE_USER']);
         
-        return array($data);
+        return $data;
     }
     
     /**
@@ -79,7 +81,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         global $ID;
         $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
         
-        $R->doc .= '<div id="fullCalendar"></div>';
+        $R->doc .= '<div id="fullCalendar" data-calendarid="'.$data['id'].'"></div>';
         $R->doc .= '<div id="fullCalendarTimezoneList" class="fullCalendarTimezoneList" style="display:none">';
         $R->doc .= '<select id="fullCalendarTimezoneDropdown">';
         $R->doc .= '<option value="local">'.$this->getLang('local_time').'</option>';

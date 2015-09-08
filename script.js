@@ -16,6 +16,8 @@ jQuery(function() {
     };
     
     // Attach to event links
+    var calendarid = jQuery('#fullCalendar').data('calendarid');
+    dw_davcal__modals.calid = calendarid;
     
     jQuery('div.fullCalendarSettings a').each(function() {
         var $link = jQuery(this);
@@ -37,7 +39,7 @@ jQuery(function() {
         DOKU_BASE + 'lib/exe/ajax.php',
         {
             call: 'plugin_davcal',
-            id: JSINFO.id,
+            id: dw_davcal__modals.calid,
             action: 'getSettings',
             params: postArray
         },
@@ -72,7 +74,7 @@ jQuery(function() {
                         data: {
                             call: 'plugin_davcal',
                             action: 'getEvents',
-                            id: JSINFO.id
+                            id: dw_davcal__modals.calid
                         },
                         error: function() {
                             dw_davcal__modals.msg = LANG.plugins.davcal['error_retrieving_data'];
@@ -103,6 +105,7 @@ var dw_davcal__modals = {
     action: null,
     uid: null,
     settings: null,
+    calid: null,
     detectedTz: null,
     
     showSettingsDialog : function() {
@@ -127,7 +130,7 @@ var dw_davcal__modals = {
                 DOKU_BASE + 'lib/exe/ajax.php',
                 {
                     call: 'plugin_davcal',
-                    id: JSINFO.id,
+                    id: dw_davcal__modals.calid,
                     action: 'saveSettings',
                     params: postArray
                 },
@@ -281,7 +284,7 @@ var dw_davcal__modals = {
                     DOKU_BASE + 'lib/exe/ajax.php',
                     {
                         call: 'plugin_davcal',
-                        id: JSINFO.id,
+                        id: dw_davcal__modals.calid,
                         action: 'editEvent',
                         params: postArray
                     },
@@ -349,7 +352,7 @@ var dw_davcal__modals = {
                     DOKU_BASE + 'lib/exe/ajax.php',
                     {
                         call: 'plugin_davcal',
-                        id: JSINFO.id,
+                        id: dw_davcal__modals.calid,
                         action: 'newEvent',
                         params: postArray
                     },
@@ -479,7 +482,7 @@ var dw_davcal__modals = {
                                 DOKU_BASE + 'lib/exe/ajax.php',
                                 {
                                     call: 'plugin_davcal',
-                                    id: JSINFO.id,
+                                    id: dw_davcal__modals.calid,
                                     action: dw_davcal__modals.action,
                                     params: {
                                         uid: dw_davcal__modals.uid
