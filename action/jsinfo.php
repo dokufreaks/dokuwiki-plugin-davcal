@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * DokuWiki DAVCal PlugIn - JSINFO component
+ */
+ 
 if(!defined('DOKU_INC')) die();
 
 class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
@@ -8,6 +12,9 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
         $controller->register_hook('DOKUWIKI_STARTED', 'AFTER', $this, 'add_jsinfo_information');
     }
 
+    /**
+     * Add the language variable to the JSINFO variable
+     */
     function add_jsinfo_information(&$event, $param) {
       global $conf;
       global $JSINFO;

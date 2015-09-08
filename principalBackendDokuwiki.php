@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Principal backend for DokuWiki - some functions are not implemented, as they
+ * are currently not needed. Only the bare minimum is present.
+ */
+
 class DokuWikiSabrePrincipalBackend extends Sabre\DAVACL\PrincipalBackend\AbstractBackend {
 
     public function getPrincipalsByPrefix($prefixPath) 

@@ -5,6 +5,10 @@
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
 /* DOKUWIKI:include_once jstz.js */
 
+/**
+ * Initialize the DAVCal script, attaching some event handlers and triggering
+ * the initial load of the fullcalendar JS
+ */
 jQuery(function() {
     // Redefine functions for using moment.js with datetimepicker
     
@@ -34,6 +38,8 @@ jQuery(function() {
         }
     );
     
+    // First, retrieve the current settings.
+    // Upon success, initialize fullcalendar.
     var postArray = { };
     jQuery.post(
         DOKU_BASE + 'lib/exe/ajax.php',
@@ -96,6 +102,9 @@ jQuery(function() {
     );    
 });
 
+/**
+ * This holds all modal windows that DAVCal uses.
+ */
 var dw_davcal__modals = {
     $editEventDialog: null,
     $dialog: null,
@@ -108,10 +117,15 @@ var dw_davcal__modals = {
     calid: null,
     detectedTz: null,
     
+    /**
+     * Show the settings dialog
+     */
     showSettingsDialog : function() {
         if(dw_davcal__modals.$settingsDialog)
             return;
 
+        // Dialog buttons are language-dependent and defined here.
+        // Attach event handlers for save and cancel.
         var dialogButtons = {};
         dialogButtons[LANG.plugins.davcal['save']] = function() {
             var postArray = { };
@@ -181,6 +195,7 @@ var dw_davcal__modals = {
            of: window
        });
        
+       // Initialize current settings
        jQuery('#dw_davcal__settings_syncurl').on('click', function() {
            jQuery(this).select();
        });
@@ -188,11 +203,6 @@ var dw_davcal__modals = {
        jQuery('#dw_davcal__settings_privateurl').on('click', function() {
            jQuery(this).select(); 
        });
-       
-           // attach event handlers
-        jQuery('#dw_davcal__settings .ui-dialog-titlebar-close').click(function(){
-          dw_davcal__modals.hideSettingsDialog();
-        });
         
         var $tzdropdown = jQuery('#dw_davcal__settings_timezone');
         jQuery('#fullCalendarTimezoneList option').each(function() {
@@ -213,13 +223,26 @@ var dw_davcal__modals = {
                 jQuery('#dw_davcal__settings_workweek').prop('checked', true);
             else
                 jQuery('#dw_davcal__settings_workweek').prop('checked', false);
-        }        
+        }
+
+        // attach event handlers
+        jQuery('#dw_davcal__settings .ui-dialog-titlebar-close').click(function(){
+          dw_davcal__modals.hideSettingsDialog();
+        });
     },
     
+    /**
+     * Sanity-check our events.
+     * 
+     * @return boolean false on failure, otherwise true
+     */
     checkEvents : function() {
+        // Retrieve dates
         var allDay = jQuery('#dw_davcal__allday_edit').prop('checked');
         var startDate = moment(jQuery('#dw_davcal__eventfrom_edit').val(), 'YYYY-MM-DD');
         var endDate = moment(jQuery('#dw_davcal__eventto_edit').val(), 'YYYY-MM-DD');
+        
+        // Do the checking
         if(!allDay)
         {
             var startTime = moment.duration(jQuery('#dw_davcal__eventfromtime_edit').val());
@@ -254,6 +277,11 @@ var dw_davcal__modals = {
         return true;
     },
     
+    /**
+     * Show the edit event dialog, which is also used to create new events
+     * @param {Object} event The event to create, that is the date or the calEvent
+     * @param {Object} edit  Whether we edit (true) or create a new event (false)
+     */
     showEditEventDialog : function(event, edit) {
         if(dw_davcal__modals.$editEventDialog)
             return;
@@ -261,6 +289,7 @@ var dw_davcal__modals = {
         var title = '';   
         var dialogButtons = {};
         var calEvent = [];
+        // Buttons are dependent on edit or create
         if(edit)
         {
             calEvent = event;
@@ -404,6 +433,7 @@ var dw_davcal__modals = {
            at: "center",
            of: window
        });
+       // Set up existing/predefined values
        jQuery('#dw_davcal__tz_edit').val(dw_davcal__modals.detectedTz);
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
@@ -429,7 +459,7 @@ var dw_davcal__modals = {
        }
        jQuery('#dw_davcal__allday_edit').prop('checked', calEvent.allDay);
        
-           // attach event handlers
+        // attach event handlers
         jQuery('#dw_davcal__edit .ui-dialog-titlebar-close').click(function(){
           dw_davcal__modals.hideEditEventDialog();
         });
@@ -468,6 +498,10 @@ var dw_davcal__modals = {
         jQuery('#dw_davcal__allday_edit').change();
     },
     
+    /**
+     * Show an info/confirmation dialog
+     * @param {Object} confirm Whether a confirmation dialog (true) or an info dialog (false) is requested
+     */
     showDialog : function(confirm)
     {
         if(dw_davcal__modals.$confirmDialog)
@@ -533,18 +567,27 @@ var dw_davcal__modals = {
             });
     },
     
+    /**
+     * Hide the edit event dialog
+     */
     hideEditEventDialog : function() {
         dw_davcal__modals.$editEventDialog.empty();
         dw_davcal__modals.$editEventDialog.remove();
         dw_davcal__modals.$editEventDialog = null;
     },
     
+    /**
+     * Hide the confirm/info dialog
+     */
     hideDialog: function() {
         dw_davcal__modals.$dialog.empty();
         dw_davcal__modals.$dialog.remove();
         dw_davcal__modals.$dialog = null;
     },
     
+    /**
+     * Hide the settings dialog
+     */
     hideSettingsDialog: function() {
         dw_davcal__modals.$settingsDialog.empty();
         dw_davcal__modals.$settingsDialog.remove();

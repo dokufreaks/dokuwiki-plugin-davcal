@@ -1,11 +1,16 @@
 <?php
 
+/**
+ * DokuWiki DAVCal PlugIn - DAV Calendar Server PlugIn.
+ * 
+ * This is heavily based on SabreDAV and features a DokuWiki connector.
+ */
+
+ // Initialize DokuWiki
 if(!defined('DOKU_INC')) define('DOKU_INC', dirname(__FILE__).'/../../../');
 if (!defined('DOKU_DISABLE_GZIP_OUTPUT')) define('DOKU_DISABLE_GZIP_OUTPUT', 1);
 require_once(DOKU_INC.'inc/init.php');
 session_write_close(); //close session
-
-require_once (DOKU_INC.'inc/fetch.functions.php');
 
 global $conf;
 
@@ -16,21 +21,6 @@ if(!file_exists($sqlFile))
 {
     die('SQL File doesn\'t exist');
 }
-
-/*
-
-CalendarServer example
-
-This server features CalDAV support
-
-*/
-
-// settings
-// date_default_timezone_set('Canada/Eastern');
-
-// If you want to run the SabreDAV server in a custom location (using mod_rewrite for instance)
-// You can override the baseUri here.
-// $baseUri = '/';
 
 /* Database */
 $pdo = new PDO('sqlite:'.$sqlFile);
@@ -48,9 +38,9 @@ require_once('authBackendDokuwiki.php');
 require_once('principalBackendDokuwiki.php');
 require_once('calendarBackendDokuwiki.php');
 
-// Backends
+// Backends - our DokuWiki backends
 $authBackend = new DokuWikiSabreAuthBackend();
-$calendarBackend = new DokuWikiSabreCalendarBackend($pdo); //Sabre\CalDAV\Backend\PDO($pdo);
+$calendarBackend = new DokuWikiSabreCalendarBackend($pdo);
 $principalBackend = new DokuWikiSabrePrincipalBackend();
 
 // Directory structure

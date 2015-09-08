@@ -1,6 +1,6 @@
 <?php
 /**
- * DokuWiki Plugin tagrevisions (Syntax Component)
+ * DokuWiki Plugin DAVCal (Syntax Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Böhler <dev@aboehler.at>
@@ -67,6 +67,9 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
             $val = trim($val);
             $data[$key] = $val;
         }
+        // Only update the calendar name/description if the ID matches the page ID.
+        // Otherwise, the calendar is included in another page and we don't want
+        // to interfere with its data.
         if($data['id'] === $ID)
             $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $_SERVER['REMOTE_USER']);
         
@@ -81,6 +84,8 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         global $ID;
         $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
         
+        // Render the Calendar. Timezone list is within a hidden div,
+        // the calendar ID is in a data-calendarid tag.
         $R->doc .= '<div id="fullCalendar" data-calendarid="'.$data['id'].'"></div>';
         $R->doc .= '<div id="fullCalendarTimezoneList" class="fullCalendarTimezoneList" style="display:none">';
         $R->doc .= '<select id="fullCalendarTimezoneDropdown">';
