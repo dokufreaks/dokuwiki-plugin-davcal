@@ -182,6 +182,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $settings = $this->getPersonalSettings($user);
       if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
           $timezone = new \DateTimeZone($settings['timezone']);
+      elseif($settings['timezone'] === 'local')
+          $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
       $startDate = explode('-', $params['eventfrom']);
@@ -202,15 +204,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $event->add('CREATED', $dtStamp);
       $event->add('LAST-MODIFIED', $dtStamp);
       $dtStart = new \DateTime();
+      $dtStart->setTimezone($timezone);            
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
       if($params['allday'] != '1')
         $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
-      $dtStart->setTimezone($timezone);
       $dtEnd = new \DateTime();
+      $dtEnd->setTimezone($timezone);      
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
       if($params['allday'] != '1')
         $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
-      $dtEnd->setTimezone($timezone);
       // According to the VCal spec, we need to add a whole day here
       if($params['allday'] == '1')
           $dtEnd->add(new \DateInterval('P1D'));
@@ -328,6 +330,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $settings = $this->getPersonalSettings($user);
       if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
           $timezone = new \DateTimeZone($settings['timezone']);
+      elseif($settings['timezone'] === 'local')
+          $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
       $startDate = explode('-', $params['eventfrom']);
@@ -354,15 +358,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($description !== '')
         $vevent->add('DESCRIPTION', $description);      
       $dtStart = new \DateTime();
+      $dtStart->setTimezone($timezone);      
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
       if($params['allday'] != '1')
         $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
-      $dtStart->setTimezone($timezone);
       $dtEnd = new \DateTime();
+      $dtEnd->setTimezone($timezone);      
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
       if($params['allday'] != '1')
         $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
-      $dtEnd->setTimezone($timezone);
       // According to the VCal spec, we need to add a whole day here
       if($params['allday'] == '1')
           $dtEnd->add(new \DateInterval('P1D'));

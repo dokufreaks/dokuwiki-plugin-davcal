@@ -3,6 +3,7 @@
 /* DOKUWIKI:include_once fullcalendar-2.4.0/lang/de.js */
 /* DOKUWIKI:include_once fullcalendar-2.4.0/lang/en.js */
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
+/* DOKUWIKI:include_once jstz.js */
 
 jQuery(function() {
     // Redefine functions for using moment.js with datetimepicker
@@ -20,7 +21,7 @@ jQuery(function() {
         var $link = jQuery(this);
         var href = $link.attr('href');
         if (!href) return;
-        
+
         $link.click(
             function(e) {
                 dw_davcal__modals.showSettingsDialog();
@@ -49,6 +50,8 @@ jQuery(function() {
                 var wknum = false;
                 var tz = false;
                 var we = true;
+                var detectedTz = jstz.determine().name();
+                dw_davcal__modals.detectedTz = detectedTz;
                 if(data['settings']['weeknumbers'] == 1)
                     wknum = true;
                 if(data['settings']['timezone'] !== '')
@@ -100,6 +103,7 @@ var dw_davcal__modals = {
     action: null,
     uid: null,
     settings: null,
+    detectedTz: null,
     
     showSettingsDialog : function() {
         if(dw_davcal__modals.$settingsDialog)
@@ -378,6 +382,7 @@ var dw_davcal__modals = {
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday_edit" class="dw_davcal__editevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
             '</table>' +
             '<input type="hidden" name="uid" id="dw_davcal__uid_edit" class="dw_davcal__editevent">' +
+            '<input type="hidden" name="detectedtz" id="dw_davcal__tz_edit" class="dw_davcal__editevent">' +
             '</div>' +
             '<div id="dw_davcal__ajaxedit"></div>'
             )
@@ -391,6 +396,7 @@ var dw_davcal__modals = {
            at: "center",
            of: window
        });
+       jQuery('#dw_davcal__tz_edit').val(dw_davcal__modals.detectedTz);
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
        jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
