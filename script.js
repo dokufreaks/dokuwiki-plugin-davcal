@@ -167,6 +167,12 @@ var dw_davcal__modals = {
        .show()
        .appendTo('.dokuwiki:first');
        
+       jQuery('#dw_davcal__settings').position({
+           my: "center",
+           at: "center",
+           of: window
+       });
+       
        jQuery('#dw_davcal__settings_syncurl').on('click', function() {
            jQuery(this).select();
        });
@@ -380,6 +386,11 @@ var dw_davcal__modals = {
        .show()
        .appendTo('.dokuwiki:first');
        
+       jQuery('#dw_davcal__edit').position({
+           my: "center",
+           at: "center",
+           of: window
+       });
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
        jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
@@ -497,6 +508,11 @@ var dw_davcal__modals = {
             .show()
             .appendTo('.dokuwiki:first');
    
+            jQuery('#dw_davcal__confirm').position({
+                my: "center",
+                at: "center",
+                of: window
+            });
                  // attach event handlers
             jQuery('#dw_davcal__confirm .ui-dialog-titlebar-close').click(function(){
                 dw_davcal__modals.hideDialog();

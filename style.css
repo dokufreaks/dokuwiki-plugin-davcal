@@ -22,21 +22,21 @@
 
 #dw_davcal__confirm {
     position: absolute;
-    top: 50%;
+    /*top: 50%;
     left: 50%;
     width: 300px;
     height: 260px;
-    margin:-130px 0 0 -150px;
+    margin:-130px 0 0 -150px; */
 }
 
 #dw_davcal__edit,
 #dw_davcal__settings {
     position: absolute;
-    top: 50%;
+    /*top: 50%;
     left: 50%;
     width: 370px;
     height: 300px;
-    margin:-175px 0 0 -150px;
+    margin:-175px 0 0 -150px; */
 }
 
 .dw_davcal__date {
