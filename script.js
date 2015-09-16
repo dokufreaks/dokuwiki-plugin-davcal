@@ -21,6 +21,7 @@ jQuery(function() {
     
     // Attach to event links
     var calendarid = jQuery('#fullCalendar').data('calendarid');
+    if(!calendarid) return;
     dw_davcal__modals.calid = calendarid;
     
     jQuery('div.fullCalendarSettings a').each(function() {
