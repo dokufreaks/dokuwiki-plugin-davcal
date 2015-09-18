@@ -452,7 +452,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       }
                       
                       // If we are within the given time range, parse the event
-                      $data[] = $this->convertIcalDataToEntry($event, $timezone, $row['uid']);
+                      $data[] = $this->convertIcalDataToEntry($event, $timezone, $row['uid'], true);
                       $rEvents->next();
                   }
               }
@@ -469,10 +469,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param \Sabre\VObject\VEvent $event The event to parse
    * @param \DateTimeZone $timezone The timezone object
    * @param string $uid The entry's UID
+   * @param boolean $recurring (optional) Set to true to define a recurring event
    * 
    * @return array The parse calendar entry
    */
-  private function convertIcalDataToEntry($event, $timezone, $uid)
+  private function convertIcalDataToEntry($event, $timezone, $uid, $recurring = false)
   {
       $entry = array();
       $start = $event->DTSTART;
@@ -502,6 +503,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $entry['description'] = '';
       $entry['title'] = (string)$event->summary;
       $entry['id'] = $uid;
+      $entry['recurring'] = $recurring;
       return $entry;
   }
   

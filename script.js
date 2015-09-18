@@ -290,8 +290,9 @@ var dw_davcal__modals = {
         var title = '';   
         var dialogButtons = {};
         var calEvent = [];
+        var recurringWarning = '';
         // Buttons are dependent on edit or create
-        if(edit)
+        if(edit && (event.recurring != true))
         {
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
@@ -349,6 +350,12 @@ var dw_davcal__modals = {
                 dw_davcal__modals.showDialog(true);
             };
         }
+        else if(edit)
+        {
+            calEvent = event;
+            title = LANG.plugins.davcal['edit_event'];
+            recurringWarning = LANG.plugins.davcal['recurring_cant_edit'];
+        } 
         else
         {
             calEvent.start = event;
@@ -358,6 +365,7 @@ var dw_davcal__modals = {
             calEvent.end.hour(13);
             calEvent.end.minute(0);
             calEvent.allDay = false;
+            calEvent.recurring = false;
             calEvent.title = '';
             calEvent.description = '';
             calEvent.id = '0';
@@ -419,6 +427,7 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventtotime" id="dw_davcal__eventtotime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday_edit" class="dw_davcal__editevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
             '</table>' +
+            recurringWarning + 
             '<input type="hidden" name="uid" id="dw_davcal__uid_edit" class="dw_davcal__editevent">' +
             '<input type="hidden" name="detectedtz" id="dw_davcal__tz_edit" class="dw_davcal__editevent">' +
             '</div>' +
@@ -434,6 +443,7 @@ var dw_davcal__modals = {
            at: "center",
            of: window
        });
+       
        // Set up existing/predefined values
        jQuery('#dw_davcal__tz_edit').val(dw_davcal__modals.detectedTz);
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
