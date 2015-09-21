@@ -540,7 +540,7 @@ var dw_davcal__modals = {
                             );
                             dw_davcal__modals.hideDialog();
                     };
-            dialogButtons[LANG.plugins.tagrevisions['cancel']] = function() {
+            dialogButtons[LANG.plugins.davcal['cancel']] = function() {
                             dw_davcal__modals.hideDialog();
                     };
         }
