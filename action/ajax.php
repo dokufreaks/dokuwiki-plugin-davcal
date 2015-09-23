@@ -103,6 +103,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getSettings':
               $data['result'] = true;
               $data['settings'] = $this->hlp->getPersonalSettings($user);
+              $data['settings']['readonly'] = !$write;
               $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($id, $user);
               $data['settings']['privateurl'] = $this->hlp->getPrivateURLForPage($id);
           break;

@@ -59,6 +59,7 @@ jQuery(function() {
                 var wknum = false;
                 var tz = false;
                 var we = true;
+                var ro = false;
                 var detectedTz = jstz.determine().name();
                 dw_davcal__modals.detectedTz = detectedTz;
                 if(data['settings']['weeknumbers'] == 1)
@@ -286,13 +287,21 @@ var dw_davcal__modals = {
     showEditEventDialog : function(event, edit) {
         if(dw_davcal__modals.$editEventDialog)
             return;
-         
+        
+        var readonly = dw_davcal__modals.settings['readonly'];
         var title = '';   
         var dialogButtons = {};
         var calEvent = [];
         var recurringWarning = '';
         // Buttons are dependent on edit or create
-        if(edit && (event.recurring != true))
+        // Several possibilities:
+        //
+        // 1) Somebody tries to edit, it is not recurring and not readonly -> show
+        // 2) Somebody tries to edit, it is recurring and not readonly -> message
+        // 3) Somebody tries to edit, it is readonly -> message
+        // 4) Somebody tries to create and it is readonly -> message
+        // 5) Somebody tries to create -> show
+        if(edit && (event.recurring != true) && (readonly === false))
         {
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
@@ -336,12 +345,10 @@ var dw_davcal__modals = {
                 dw_davcal__modals.action = 'deleteEvent';
                 dw_davcal__modals.msg = LANG.plugins.davcal['really_delete_this_event'];
                 dw_davcal__modals.completeCb = function(data) {
-                    if(data.result == false)
-                    {
-                        dw_davcal__modals.msg = data.errmsg;
-                        dw_davcal__modals.showDialog(false);
-                    }
-                    else
+                    var result = data['result'];
+                    var html = data['html'];
+                    jQuery('#dw_davcal__ajaxedit').html(html);                    
+                    if(result === true)
                     {
                         jQuery('#fullCalendar').fullCalendar('refetchEvents');
                         dw_davcal__modals.hideEditEventDialog();
@@ -350,12 +357,34 @@ var dw_davcal__modals = {
                 dw_davcal__modals.showDialog(true);
             };
         }
-        else if(edit)
+        else if(edit && (event.recurring == true) && (readonly === false))
         {
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
             recurringWarning = LANG.plugins.davcal['recurring_cant_edit'];
-        } 
+        }
+        else if(edit && (readonly === true))
+        {
+            calEvent = event;
+            title = LANG.plugins.davcal['edit_event'];
+            recurringWarning = LANG.plugins.davcal['no_permission'];
+        }
+        else if(readonly === true)
+        {
+            calEvent.start = event;
+            calEvent.end = moment(event);
+            calEvent.start.hour(12);
+            calEvent.start.minute(0);
+            calEvent.end.hour(13);
+            calEvent.end.minute(0);
+            calEvent.allDay = false;
+            calEvent.recurring = false;
+            calEvent.title = '';
+            calEvent.description = '';
+            calEvent.id = '0';
+            title = LANG.plugins.davcal['create_new_event'];
+            recurringWarning = LANG.plugins.davcal['no_permission'];
+        }
         else
         {
             calEvent.start = event;

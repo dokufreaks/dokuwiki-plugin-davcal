@@ -39,3 +39,4 @@ $lang['js']['end_date_is_same_as_start_date'] = 'End date/time is equal to start
 $lang['js']['description'] = 'Description';
 $lang['js']['private_url'] = 'Private URL';
 $lang['js']['recurring_cant_edit'] = 'Editing recurring events is currently not supported';
+$lang['js']['no_permission'] = 'You don\'t have permission to modify this calendar';
