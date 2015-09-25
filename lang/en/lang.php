@@ -40,3 +40,5 @@ $lang['js']['description'] = 'Description';
 $lang['js']['private_url'] = 'Private URL';
 $lang['js']['recurring_cant_edit'] = 'Editing recurring events is currently not supported';
 $lang['js']['no_permission'] = 'You don\'t have permission to modify this calendar';
+$lang['js']['calendar'] = 'Calendar';
+$lang['js']['start_monday'] = 'Week starts on Monday';

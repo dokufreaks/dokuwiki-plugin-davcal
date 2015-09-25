@@ -20,9 +20,9 @@ jQuery(function() {
     };
     
     // Attach to event links
-    var calendarid = jQuery('#fullCalendar').data('calendarid');
-    if(!calendarid) return;
-    dw_davcal__modals.calid = calendarid;
+    var calendarpage = jQuery('#fullCalendar').data('calendarpage');
+    if(!calendarpage) return;
+    dw_davcal__modals.page = calendarpage;
     
     jQuery('div.fullCalendarSettings a').each(function() {
         var $link = jQuery(this);
@@ -46,7 +46,7 @@ jQuery(function() {
         DOKU_BASE + 'lib/exe/ajax.php',
         {
             call: 'plugin_davcal',
-            id: dw_davcal__modals.calid,
+            id: dw_davcal__modals.page,
             action: 'getSettings',
             params: postArray
         },
@@ -60,6 +60,7 @@ jQuery(function() {
                 var tz = false;
                 var we = true;
                 var ro = false;
+                var firstday = 0;
                 var detectedTz = jstz.determine().name();
                 dw_davcal__modals.detectedTz = detectedTz;
                 if(data['settings']['weeknumbers'] == 1)
@@ -68,6 +69,8 @@ jQuery(function() {
                     tz = data['settings']['timezone'];
                 if(data['settings']['workweek'] == 1)
                     we = false;
+                if(data['settings']['monday'] == 1)
+                    firstday = 1;
                 // Initialize the davcal popup
                 var res = jQuery('#fullCalendar').fullCalendar({
                     dayClick: function(date, jsEvent, view) {
@@ -82,7 +85,7 @@ jQuery(function() {
                         data: {
                             call: 'plugin_davcal',
                             action: 'getEvents',
-                            id: dw_davcal__modals.calid
+                            id: dw_davcal__modals.page
                         },
                         error: function() {
                             dw_davcal__modals.msg = LANG.plugins.davcal['error_retrieving_data'];
@@ -98,6 +101,7 @@ jQuery(function() {
                     weekNumbers: wknum,
                     timezone: tz,
                     weekends: we,
+                    firstDay: firstday
                 });
             }
         }
@@ -116,12 +120,13 @@ var dw_davcal__modals = {
     action: null,
     uid: null,
     settings: null,
-    calid: null,
+    page: null,
     detectedTz: null,
     
     /**
      * Show the settings dialog
      */
+    // FIXME: Hide URLs for multi-calendar
     showSettingsDialog : function() {
         if(dw_davcal__modals.$settingsDialog)
             return;
@@ -146,7 +151,7 @@ var dw_davcal__modals = {
                 DOKU_BASE + 'lib/exe/ajax.php',
                 {
                     call: 'plugin_davcal',
-                    id: dw_davcal__modals.calid,
+                    id: dw_davcal__modals.page,
                     action: 'saveSettings',
                     params: postArray
                 },
@@ -180,8 +185,9 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
-            '<tr><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['start_monday'] + '</td><td><input type="checkbox" name="monday" id="dw_davcal__settings_monday" class="dw_davcal__settings"></td></tr>' + 
+            '<tr id="dw_davcal__settings_syncurl"><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
+            '<tr id="dw_davcal__settings_privateurl"><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>' +
             '</table>' +
             '</div>' +
             '<div id="dw_davcal__ajaxsettings"></div>'
@@ -225,6 +231,21 @@ var dw_davcal__modals = {
                 jQuery('#dw_davcal__settings_workweek').prop('checked', true);
             else
                 jQuery('#dw_davcal__settings_workweek').prop('checked', false);
+                
+            if(dw_davcal__modals.settings['monday'] == 1)
+                jQuery('#dw_davcal__settings_monday').prop('checked', true);
+            else
+                jQuery('#dw_davcal__settings_monday').prop('checked', false);
+        }
+        
+        if(JSINFO.plugin.davcal['disable_sync'])
+        {
+            jQuery('#dw_davcal__settings_syncurl').remove();
+        }
+        
+        if(JSINFO.plugin.davcal['disable_ics'])
+        {
+            jQuery('#dw_davcal__settings_privateurl').remove();
         }
 
         // attach event handlers
@@ -309,6 +330,11 @@ var dw_davcal__modals = {
                 if(!dw_davcal__modals.checkEvents())
                   return;
                 var postArray = { };
+                var pageid = dw_davcal__modals.page;
+                if(dw_davcal__modals.settings['multi'])
+                {
+                    pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
+                }
                 jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
@@ -324,7 +350,7 @@ var dw_davcal__modals = {
                     DOKU_BASE + 'lib/exe/ajax.php',
                     {
                         call: 'plugin_davcal',
-                        id: dw_davcal__modals.calid,
+                        id: pageid,
                         action: 'editEvent',
                         params: postArray
                     },
@@ -382,6 +408,7 @@ var dw_davcal__modals = {
             calEvent.title = '';
             calEvent.description = '';
             calEvent.id = '0';
+            calEvent.page = dw_davcal__modals.page;
             title = LANG.plugins.davcal['create_new_event'];
             recurringWarning = LANG.plugins.davcal['no_permission'];
         }
@@ -398,12 +425,18 @@ var dw_davcal__modals = {
             calEvent.title = '';
             calEvent.description = '';
             calEvent.id = '0';
+            calEvent.page = dw_davcal__modals.settings['calids'][0]['page'];
             title = LANG.plugins.davcal['create_new_event'];
             dialogButtons[LANG.plugins.davcal['create']] = function() {
                 if(!dw_davcal__modals.checkEvents())
                   return;
 
                 var postArray = { };
+                var pageid = dw_davcal__modals.page;
+                if(dw_davcal__modals.settings['multi'])
+                {
+                    pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
+                }
                 jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
@@ -419,7 +452,7 @@ var dw_davcal__modals = {
                     DOKU_BASE + 'lib/exe/ajax.php',
                     {
                         call: 'plugin_davcal',
-                        id: dw_davcal__modals.calid,
+                        id: pageid,
                         action: 'newEvent',
                         params: postArray
                     },
@@ -450,7 +483,9 @@ var dw_davcal__modals = {
            buttons: dialogButtons,
        })
        .html(
-            '<div><table><tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" id="dw_davcal__eventname_edit" name="eventname" class="dw_davcal__editevent"></td></tr>' +
+            '<div><table>' + 
+            '<tr><td>' + LANG.plugins.davcal['calendar'] + '</td><td><select id="dw_davcal__editevent_calendar"></select></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['title'] + '</td><td><input type="text" id="dw_davcal__eventname_edit" name="eventname" class="dw_davcal__editevent"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['description'] + '</td><td><textarea name="eventdescription" id="dw_davcal__eventdescription_edit" class="dw_davcal__editevent dw_davcal__text"></textarea></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" name="eventfrom" id="dw_davcal__eventfrom_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventfromtime" id="dw_davcal__eventfromtime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventtotime" id="dw_davcal__eventtotime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
@@ -472,6 +507,20 @@ var dw_davcal__modals = {
            at: "center",
            of: window
        });
+       
+       // Populate calendar dropdown
+       var $dropdown = jQuery("#dw_davcal__editevent_calendar");
+       for(var i=0; i<dw_davcal__modals.settings['calids'].length; i++)
+       {
+           var sel = '';
+           if(calEvent.page == dw_davcal__modals.settings['calids'][i]['page'])
+             sel = ' selected="selected"';
+           $dropdown.append('<option value="' + dw_davcal__modals.settings['calids'][i]['page'] + '"' + sel + '>' + dw_davcal__modals.settings['calids'][i]['name'] + '</option>');
+       }
+       if(edit || (dw_davcal__modals.settings['calids'].length < 1))
+       {
+           $dropdown.prop('disabled', true);
+       }
        
        // Set up existing/predefined values
        jQuery('#dw_davcal__tz_edit').val(dw_davcal__modals.detectedTz);
@@ -551,12 +600,17 @@ var dw_davcal__modals = {
         if(confirm)
         {
             title = LANG.plugins.davcal['confirmation'];
+            var pageid = dw_davcal__modals.page;
+            if(dw_davcal__modals.settings['multi'])
+            {
+                pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
+            }
             dialogButtons[LANG.plugins.davcal['yes']] =  function() {
                             jQuery.post(
                                 DOKU_BASE + 'lib/exe/ajax.php',
                                 {
                                     call: 'plugin_davcal',
-                                    id: dw_davcal__modals.calid,
+                                    id: pageid,
                                     action: dw_davcal__modals.action,
                                     params: {
                                         uid: dw_davcal__modals.uid

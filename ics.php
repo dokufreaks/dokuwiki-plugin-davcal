@@ -12,6 +12,10 @@ session_write_close(); //close session
 $path = explode('/', $_SERVER['REQUEST_URI']);
 $icsFile = end($path);
 
+global $conf;
+if(!isset($conf['plugin']['davcal']['disable_ics']) || ($conf['plugin']['davcal']['disable_ics'] === 1))
+    die("ICS synchronisation is disabled");
+
 // Load the helper plugin
 $hlp = plugin_load('helper', 'davcal');
 

@@ -59,20 +59,45 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         $options = explode(',', $options);
         $data = array('name' => $ID,
                       'description' => $this->getLang('created_by_davcal'),
-                      'id' => $ID);
+                      'id' => array(),
+                      'settings' => 'show',
+                      );
+        $lastid = $ID;
         foreach($options as $option)
         {
             list($key, $val) = explode('=', $option);
             $key = strtolower(trim($key));
             $val = trim($val);
-            $data[$key] = $val;
+            switch($key)
+            {
+                case 'id':
+                    $lastid = $val;
+                    if(!in_array($val, $data['id']))
+                        $data['id'][$val] = '#3a87ad';
+                break;
+                case 'color':
+                    $data['id'][$lastid] = $val;
+                break;
+                default:
+                    $data[$key] = $val;
+            }
+        }
+        // Handle the default case when the user didn't enter a different ID
+        if(empty($data['id']))
+        {
+            $data['id'] = array($ID => '#3a87ad');
         }
         // Only update the calendar name/description if the ID matches the page ID.
         // Otherwise, the calendar is included in another page and we don't want
         // to interfere with its data.
-        if($data['id'] === $ID)
+        if(in_array($ID, array_keys($data['id'])))
+        {
             $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $_SERVER['REMOTE_USER']);
-        
+            $this->hlp->setCalendarColorForPage($data['id'][$ID], $ID);
+        }
+
+        p_set_metadata($ID, array('plugin_davcal' => $data));
+
         return $data;
     }
     
@@ -86,7 +111,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         
         // Render the Calendar. Timezone list is within a hidden div,
         // the calendar ID is in a data-calendarid tag.
-        $R->doc .= '<div id="fullCalendar" data-calendarid="'.$data['id'].'"></div>';
+        $R->doc .= '<div id="fullCalendar" data-calendarpage="'.$ID.'"></div>';
         $R->doc .= '<div id="fullCalendarTimezoneList" class="fullCalendarTimezoneList" style="display:none">';
         $R->doc .= '<select id="fullCalendarTimezoneDropdown">';
         $R->doc .= '<option value="local">'.$this->getLang('local_time').'</option>';
@@ -95,7 +120,10 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
             $R->doc .= '<option value="'.$tz.'">'.$tz.'</option>';
         }
         $R->doc .= '</select></div>';
-        $R->doc .= '<div class="fullCalendarSettings"><a href="#" class="fullCalendarSettings"><img src="'.DOKU_URL.'lib/plugins/davcal/images/settings.png'.'">'.$this->getLang('settings').'</a></div>';
+        if(($this->getConf('hide_settings') !== 1) && ($data['settings'] !== 'hide'))
+        {
+            $R->doc .= '<div class="fullCalendarSettings"><a href="#" class="fullCalendarSettings"><img src="'.DOKU_URL.'lib/plugins/davcal/images/settings.png'.'">'.$this->getLang('settings').'</a></div>';
+        }
      
     }
 

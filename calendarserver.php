@@ -22,6 +22,11 @@ if(!file_exists($sqlFile))
     die('SQL File doesn\'t exist');
 }
 
+if(!isset($conf['plugin']['davcal']['disable_sync']) || ($conf['plugin']['davcal']['disable_sync'] == 1))
+{
+    die('Synchronisation is disabled');
+}
+
 /* Database */
 $pdo = new PDO('sqlite:'.$sqlFile);
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

@@ -33,6 +33,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       $params = $INPUT->post->arr('params');
       $user = $_SERVER['REMOTE_USER'];
       $write = false;
+      $multi = false;
       
       $data = array();
       
@@ -46,6 +47,15 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       {
           $write = true;
       }
+      
+      // Retrieve the calendar pages based on the meta data
+      $calendarPages = $this->hlp->getCalendarPagesByMeta($id);
+      if($calendarPages === false)
+      {
+          $calendarPages = array($id);
+      }
+      if(count($calendarPages) > 1)
+        $multi = true;
       
       // Parse the requested action
       switch($action)
@@ -68,8 +78,12 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getEvents':
               $startDate = $INPUT->post->str('start');
               $endDate = $INPUT->post->str('end');
-              $data = $this->hlp->getEventsWithinDateRange($id, $user, $startDate, $endDate);
-              
+              $data = array();
+              foreach($calendarPages as $page)
+              {
+                  $data = array_merge($data, $this->hlp->getEventsWithinDateRange($page, 
+                                      $user, $startDate, $endDate)); 
+              }
           break;
           // Edit an event
           case 'editEvent':
@@ -103,6 +117,8 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getSettings':
               $data['result'] = true;
               $data['settings'] = $this->hlp->getPersonalSettings($user);
+              $data['settings']['multi'] = $multi;
+              $data['settings']['calids'] = $this->hlp->getCalendarMapForIDs($calendarPages);
               $data['settings']['readonly'] = !$write;
               $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($id, $user);
               $data['settings']['privateurl'] = $this->hlp->getPrivateURLForPage($id);
@@ -113,6 +129,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $settings['weeknumbers'] = $params['weeknumbers'];
               $settings['timezone'] = $params['timezone'];
               $settings['workweek'] = $params['workweek'];
+              $settings['monday'] = $params['monday'];
               if($this->hlp->savePersonalSettings($settings, $user))
               {
                   $data['result'] = true;

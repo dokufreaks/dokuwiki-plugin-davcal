@@ -31,5 +31,7 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
       }
       
       $JSINFO['plugin']['davcal']['language'] = $lc;
+      $JSINFO['plugin']['davcal']['disable_sync'] = $this->getConf('disable_sync');
+      $JSINFO['plugin']['davcal']['disable_ics'] = $this->getConf('disable_ics');
     }  
 }

@@ -11,6 +11,7 @@ if(!defined('DOKU_INC')) die();
 class helper_plugin_davcal extends DokuWiki_Plugin {
   
   protected $sqlite = null;
+  protected $cachedValues = array();
   
   /**
     * Constructor to load the configuration and the SQLite plugin
@@ -27,6 +28,167 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     {
         return;
     }
+  }
+  
+  /**
+   * Retrieve meta data for a given page
+   * 
+   * @param string $id optional The page ID
+   * @return array The metadata
+   */
+  private function getMeta($id = null) {
+    global $ID;
+    global $INFO;
+
+    if ($id === null) $id = $ID;
+
+    if($ID === $id && $INFO['meta']) {
+        $meta = $INFO['meta'];
+    } else {
+        $meta = p_get_metadata($id);
+    }
+    
+    return $meta;
+  }
+  
+  /**
+   * Retrieve the meta data for a given page
+   * 
+   * @param string $id optional The page ID
+   * @return array with meta data
+   */
+  public function getCalendarMetaForPage($id = null)
+  {
+      if(is_null($id))
+      {
+          global $ID;
+          $id = $ID;
+      }
+      
+      $meta = $this->getMeta($id);
+      if(isset($meta['plugin_davcal']))
+        return $meta['plugin_davcal'];
+      else
+        return array();
+  }
+  
+  /**
+   * Get all calendar pages used by a given page
+   * based on the stored metadata
+   * 
+   * @param string $id optional The page id
+   * @return mixed The pages as array or false
+   */
+  public function getCalendarPagesByMeta($id = null)
+  {
+      if(is_null($id))
+      {
+          global $ID;
+          $id = $ID;
+      }
+      
+      $meta = $this->getCalendarMetaForPage($id);
+      if(isset($meta['id']))
+      {
+          return array_keys($meta['id']);
+      }
+      return false;
+  }
+  
+  /**
+   * Get a list of calendar names/pages/ids/colors
+   * for an array of page ids
+   * 
+   * @param array $calendarPages The calendar pages to retrieve
+   * @return array The list
+   */
+  public function getCalendarMapForIDs($calendarPages)
+  {
+      $data = array();
+      foreach($calendarPages as $page)
+      {
+          $calid = $this->getCalendarIdForPage($page);
+          if($calid !== false)
+          {
+            $settings = $this->getCalendarSettings($calid);
+            $name = $settings['displayname'];
+            $color = $settings['calendarcolor'];
+            $data[] = array('name' => $name, 'page' => $page, 'calid' => $calid,
+                            'color' => $color);
+          }
+      }
+      return $data;
+  }
+  
+  /**
+   * Get the saved calendar color for a given page.
+   * 
+   * @param string $id optional The page ID
+   * @return mixed The color on success, otherwise false
+   */
+  public function getCalendarColorForPage($id = null)
+  {
+      if(is_null($id))
+      {
+          global $ID;
+          $id = $ID;
+      }
+      
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      
+      return $this->getCalendarColorForCalendar($calid);
+  }
+  
+  /**
+   * Get the saved calendar color for a given calendar ID.
+   * 
+   * @param string $id optional The calendar ID
+   * @return mixed The color on success, otherwise false
+   */
+  public function getCalendarColorForCalendar($calid)
+  {
+      if(isset($this->cachedValues['calendarcolor'][$calid]))
+        return $this->cachedValues['calendarcolor'][$calid];
+
+      $row = $this->getCalendarSettings($calid);
+
+      if(!isset($row['calendarcolor']))
+        return false;
+      
+      $color = $row['calendarcolor'];
+      $this->cachedValues['calendarcolor'][$calid] = $color;
+      return $color;
+  }
+  
+  /**
+   * Set the calendar color for a given page.
+   * 
+   * @param string $color The color definition
+   * @param string $id optional The page ID
+   * @return boolean True on success, otherwise false
+   */
+  public function setCalendarColorForPage($color, $id = null)
+  {
+      if(is_null($id))
+      {
+          global $ID;
+          $id = $ID;
+      }
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      
+      $query = "UPDATE calendars SET calendarcolor=".$this->sqlite->quote_string($color).
+               " WHERE id=".$this->sqlite->quote_string($calid);
+      $res = $this->sqlite->query($query);
+      if($res !== false)
+      {
+        $this->cachedValues['calendarcolor'][$calid] = $color;
+        return true;
+      }
+      return false;
   }
   
   /**
@@ -91,6 +253,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               return false;
       }
       $this->sqlite->query("COMMIT TRANSACTION");
+      $this->cachedValues['settings'][$userid] = $settings;
       return true;
   }
   
@@ -110,11 +273,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       if(is_null($userid))
         $userid = $_SERVER['REMOTE_USER'];
+      
+      if(isset($this->cachedValues['settings'][$userid]))
+        return $this->cachedValues['settings'][$userid];
       // Some sane default settings
       $settings = array(
         'timezone' => 'local',
         'weeknumbers' => '0',
-        'workweek' => '0'
+        'workweek' => '0',
+        'monday' => '0'
       );
       $query = "SELECT key, value FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
       $res = $this->sqlite->query($query);
@@ -123,6 +290,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           $settings[$row['key']] = $row['value'];
       }
+      $this->cachedValues['settings'][$userid] = $settings;
       return $settings;
   }
   
@@ -142,13 +310,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $id = $ID;
       }
       
+      if(isset($this->cachedValues['calid'][$id]))
+        return $this->cachedValues['calid'][$id];
+      
       $query = "SELECT calid FROM pagetocalendarmapping WHERE page=".$this->sqlite->quote_string($id);
       $res = $this->sqlite->query($query);
       $row = $this->sqlite->res2row($res);
       if(isset($row['calid']))
-        return $row['calid'];
-      else
-        return false;
+      {
+        $calid = $row['calid'];
+        $this->cachedValues['calid'] = $calid;
+        return $calid;
+      }
+      return false;
   }
   
   /**
@@ -378,7 +552,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getCalendarSettings($calid)
   {
-      $query = "SELECT principaluri, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id=".$this->sqlite->quote_string($calid);
+      $query = "SELECT principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id=".$this->sqlite->quote_string($calid);
       $res = $this->sqlite->query($query);
       $row = $this->sqlite->res2row($res);
       return $row;
@@ -411,6 +585,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       // Load SabreDAV
       require_once('vendor/autoload.php');
       $calid = $this->getCalendarIdForPage($id);
+      $color = $this->getCalendarColorForCalendar($calid);
       $startTs = new \DateTime($startDate);
       $endTs = new \DateTime($endDate);
       
@@ -452,12 +627,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       }
                       
                       // If we are within the given time range, parse the event
-                      $data[] = $this->convertIcalDataToEntry($event, $timezone, $row['uid'], true);
+                      $data[] = $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true);
                       $rEvents->next();
                   }
               }
               else
-                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $timezone, $row['uid']);
+                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color);
           }
       }
       return $data;
@@ -473,7 +648,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * 
    * @return array The parse calendar entry
    */
-  private function convertIcalDataToEntry($event, $timezone, $uid, $recurring = false)
+  private function convertIcalDataToEntry($event, $page, $timezone, $uid, $color, $recurring = false)
   {
       $entry = array();
       $start = $event->DTSTART;
@@ -503,7 +678,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $entry['description'] = '';
       $entry['title'] = (string)$event->summary;
       $entry['id'] = $uid;
+      $entry['page'] = $page;
+      $entry['color'] = $color;
       $entry['recurring'] = $recurring;
+      
       return $entry;
   }
   
@@ -791,6 +969,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getPrivateURLForCalendar($calid)
   {
+      if(isset($this->cachedValues['privateurl'][$calid]))
+        return $this->cachedValues['privateurl'][$calid];
       $query = "SELECT url FROM calendartoprivateurlmapping WHERE calid=".$this->sqlite->quote_string($calid);
       $res = $this->sqlite->query($query);
       $row = $this->sqlite->res2row($res);
@@ -811,7 +991,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           $url = $row['url'];
       }
-      return DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
+      
+      $url = DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
+      $this->cachedValues['privateurl'][$calid] = $url;
+      return $url;
   }
   
   /**
