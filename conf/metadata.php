@@ -9,3 +9,7 @@
 $meta['hide_settings']          = array('onoff');
 $meta['disable_sync']           = array('onoff');
 $meta['disable_ics']            = array('onoff');
+$meta['monday']                 = array('onoff');
+$meta['timezone']               = array('string');
+$meta['workweek']               = array('onoff');
+$meta['weeknumbers']            = array('onoff');

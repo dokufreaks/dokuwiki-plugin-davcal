@@ -278,10 +278,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return $this->cachedValues['settings'][$userid];
       // Some sane default settings
       $settings = array(
-        'timezone' => 'local',
-        'weeknumbers' => '0',
-        'workweek' => '0',
-        'monday' => '0'
+        'timezone' => $this->getConf('timezone'),
+        'weeknumbers' => $this->getConf('weeknumbers'),
+        'workweek' => $this->getConf('workweek'),
+        'monday' => $this->getConf('monday')
       );
       $query = "SELECT key, value FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
       $res = $this->sqlite->query($query);
