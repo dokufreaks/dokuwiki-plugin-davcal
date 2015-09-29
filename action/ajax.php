@@ -30,6 +30,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       
       $action = trim($INPUT->post->str('action'));
       $id = trim($INPUT->post->str('id'));
+      $page = trim($INPUT->post->str('page'));
       $params = $INPUT->post->arr('params');
       $user = $_SERVER['REMOTE_USER'];
       $write = false;
@@ -49,10 +50,10 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       }
       
       // Retrieve the calendar pages based on the meta data
-      $calendarPages = $this->hlp->getCalendarPagesByMeta($id);
+      $calendarPages = $this->hlp->getCalendarPagesByMeta($page);
       if($calendarPages === false)
       {
-          $calendarPages = array($id);
+          $calendarPages = array($page);
       }
       if(count($calendarPages) > 1)
         $multi = true;
@@ -79,9 +80,9 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $startDate = $INPUT->post->str('start');
               $endDate = $INPUT->post->str('end');
               $data = array();
-              foreach($calendarPages as $page)
+              foreach($calendarPages as $calPage)
               {
-                  $data = array_merge($data, $this->hlp->getEventsWithinDateRange($page, 
+                  $data = array_merge($data, $this->hlp->getEventsWithinDateRange($calPage, 
                                       $user, $startDate, $endDate)); 
               }
           break;
@@ -120,8 +121,9 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $data['settings']['multi'] = $multi;
               $data['settings']['calids'] = $this->hlp->getCalendarMapForIDs($calendarPages);
               $data['settings']['readonly'] = !$write;
-              $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($id, $user);
-              $data['settings']['privateurl'] = $this->hlp->getPrivateURLForPage($id);
+              $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($page, $user);
+              $data['settings']['privateurl'] = $this->hlp->getPrivateURLForPage($page);
+              $data['settings']['meta'] = $this->hlp->getCalendarMetaForPage($page);
           break;
           // Save personal settings
           case 'saveSettings':

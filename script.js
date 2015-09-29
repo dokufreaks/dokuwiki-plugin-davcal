@@ -47,6 +47,7 @@ jQuery(function() {
         {
             call: 'plugin_davcal',
             id: dw_davcal__modals.page,
+            page: dw_davcal__modals.page,
             action: 'getSettings',
             params: postArray
         },
@@ -71,6 +72,7 @@ jQuery(function() {
                     we = false;
                 if(data['settings']['monday'] == 1)
                     firstday = 1;
+                var defaultView = data['settings']['meta']['view'];
                 // Initialize the davcal popup
                 var res = jQuery('#fullCalendar').fullCalendar({
                     dayClick: function(date, jsEvent, view) {
@@ -85,7 +87,8 @@ jQuery(function() {
                         data: {
                             call: 'plugin_davcal',
                             action: 'getEvents',
-                            id: dw_davcal__modals.page
+                            id: dw_davcal__modals.page,
+                            page: dw_davcal__modals.page
                         },
                         error: function() {
                             dw_davcal__modals.msg = LANG.plugins.davcal['error_retrieving_data'];
@@ -101,7 +104,8 @@ jQuery(function() {
                     weekNumbers: wknum,
                     timezone: tz,
                     weekends: we,
-                    firstDay: firstday
+                    firstDay: firstday,
+                    defaultView: defaultView
                 });
             }
         }
@@ -152,6 +156,7 @@ var dw_davcal__modals = {
                 {
                     call: 'plugin_davcal',
                     id: dw_davcal__modals.page,
+                    page: dw_davcal__modals.page,
                     action: 'saveSettings',
                     params: postArray
                 },
@@ -351,6 +356,7 @@ var dw_davcal__modals = {
                     {
                         call: 'plugin_davcal',
                         id: pageid,
+                        page: dw_davcal__modals.page,
                         action: 'editEvent',
                         params: postArray
                     },
@@ -453,6 +459,7 @@ var dw_davcal__modals = {
                     {
                         call: 'plugin_davcal',
                         id: pageid,
+                        page: dw_davcal__modals.page,
                         action: 'newEvent',
                         params: postArray
                     },
@@ -611,6 +618,7 @@ var dw_davcal__modals = {
                                 {
                                     call: 'plugin_davcal',
                                     id: pageid,
+                                    page: dw_davcal__modals.page,
                                     action: dw_davcal__modals.action,
                                     params: {
                                         uid: dw_davcal__modals.uid

@@ -61,6 +61,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
                       'description' => $this->getLang('created_by_davcal'),
                       'id' => array(),
                       'settings' => 'show',
+                      'view' => 'month'
                       );
         $lastid = $ID;
         foreach($options as $option)
@@ -77,6 +78,12 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
                 break;
                 case 'color':
                     $data['id'][$lastid] = $val;
+                break;
+                case 'view':
+                    if(in_array($val, array('month', 'basicDay', 'basicWeek', 'agendaWeek', 'agendaDay')))
+                        $data['view'] = $val;
+                    else
+                        $data['view'] = 'month';
                 break;
                 default:
                     $data[$key] = $val;
