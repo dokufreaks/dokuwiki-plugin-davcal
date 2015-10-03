@@ -31,7 +31,16 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
       }
       
       $JSINFO['plugin']['davcal']['language'] = $lc;
-      $JSINFO['plugin']['davcal']['disable_sync'] = $this->getConf('disable_sync');
+      if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+      {
+        $JSINFO['plugin']['davcal']['disable_sync'] = $this->getConf('disable_sync');
+        $JSINFO['plugin']['davcal']['disable_settings'] = $this->getConf('hide_settings');
+      }
+      else
+      {
+        $JSINFO['plugin']['davcal']['disable_settings'] = 1;
+        $JSINFO['plugin']['davcal']['disable_sync'] = 1;
+      }
       $JSINFO['plugin']['davcal']['disable_ics'] = $this->getConf('disable_ics');
     }  
 }

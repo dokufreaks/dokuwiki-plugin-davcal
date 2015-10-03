@@ -99,7 +99,11 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         // to interfere with its data.
         if(in_array($ID, array_keys($data['id'])))
         {
-            $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $_SERVER['REMOTE_USER']);
+            if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+                $username = $_SERVER['REMOTE_USER'];
+            else
+                $username = uniqid('davcal-');
+            $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $username);
             $this->hlp->setCalendarColorForPage($data['id'][$ID], $ID);
         }
 
@@ -128,7 +132,7 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
         }
         $R->doc .= '</select></div>';
         if(($this->getConf('hide_settings') !== 1) && ($data['settings'] !== 'hide'))
-        {
+        {            
             $R->doc .= '<div class="fullCalendarSettings"><a href="#" class="fullCalendarSettings"><img src="'.DOKU_URL.'lib/plugins/davcal/images/settings.png'.'">'.$this->getLang('settings').'</a></div>';
         }
      

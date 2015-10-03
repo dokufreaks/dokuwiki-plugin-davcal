@@ -32,7 +32,10 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       $id = trim($INPUT->post->str('id'));
       $page = trim($INPUT->post->str('page'));
       $params = $INPUT->post->arr('params');
-      $user = $_SERVER['REMOTE_USER'];
+      if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+        $user = $_SERVER['REMOTE_USER'];
+      else
+        $user = null;
       $write = false;
       $multi = false;
       

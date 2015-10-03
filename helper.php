@@ -211,7 +211,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $id = $ID;
       }
       if(is_null($userid))
-        $userid = $_SERVER['REMOTE_USER'];
+      {
+        if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+        {
+          $userid = $_SERVER['REMOTE_USER'];
+        }
+        else
+        {
+          $userid = uniqid('davcal-');
+        }
+      }
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return $this->createCalendarForPage($name, $description, $id, $userid);
@@ -236,7 +245,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   public function savePersonalSettings($settings, $userid = null)
   {
       if(is_null($userid))
-          $userid = $_SERVER['REMOTE_USER'];
+      {
+          if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+          {
+            $userid = $_SERVER['REMOTE_USER'];
+          }
+          else 
+          {
+              return false;
+          }
+      }
       $this->sqlite->query("BEGIN TRANSACTION");
       
       $query = "DELETE FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
@@ -271,11 +289,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getPersonalSettings($userid = null)
   {
-      if(is_null($userid))
-        $userid = $_SERVER['REMOTE_USER'];
-      
-      if(isset($this->cachedValues['settings'][$userid]))
-        return $this->cachedValues['settings'][$userid];
       // Some sane default settings
       $settings = array(
         'timezone' => $this->getConf('timezone'),
@@ -283,6 +296,20 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         'workweek' => $this->getConf('workweek'),
         'monday' => $this->getConf('monday')
       );
+      if(is_null($userid))
+      {
+          if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+          {
+            $userid = $_SERVER['REMOTE_USER'];
+          }
+          else 
+          {
+            return $settings;
+          }
+      }
+
+      if(isset($this->cachedValues['settings'][$userid]))
+        return $this->cachedValues['settings'][$userid];
       $query = "SELECT key, value FROM calendarsettings WHERE userid=".$this->sqlite->quote_string($userid);
       $res = $this->sqlite->query($query);
       $arr = $this->sqlite->res2arr($res);
@@ -354,15 +381,18 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getCalendarIdsForUser($principalUri)
   {
+      global $auth;
       $user = explode('/', $principalUri);
       $user = end($user);
       $mapping = $this->getCalendarIdToPageMapping();
       $calids = array();
+      $ud = $auth->getUserData($user);
+      $groups = $ud['grps'];      
       foreach($mapping as $row)
       {
           $id = $row['calid'];
           $page = $row['page'];
-          $acl = auth_quickaclcheck($page);
+          $acl = auth_aclcheck($page, $user, $groups);
           if($acl >= AUTH_READ)
           {
               $write = $acl > AUTH_READ;
@@ -391,7 +421,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $id = $ID;
       }
       if(is_null($userid))
+      {
+        if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+        {
           $userid = $_SERVER['REMOTE_USER'];
+        }
+        else
+        {
+          $userid = uniqid('davcal-');
+        }
+      }
       $values = array('principals/'.$userid, 
                       $name,
                       str_replace(array('/', ' ', ':'), '_', $id), 
@@ -929,8 +968,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getSyncUrlForPage($id, $user = null)
   {
-      if(is_null($user))
-        $user = $_SERVER['REMOTE_USER'];
+      if(is_null($userid))
+      {
+        if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+        {
+          $userid = $_SERVER['REMOTE_USER'];
+        }
+        else
+        {
+          return false;
+        }
+      }
       
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)

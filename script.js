@@ -138,43 +138,75 @@ var dw_davcal__modals = {
         // Dialog buttons are language-dependent and defined here.
         // Attach event handlers for save and cancel.
         var dialogButtons = {};
-        dialogButtons[LANG.plugins.davcal['save']] = function() {
-            var postArray = { };
-            jQuery("input[class=dw_davcal__settings], select[class=dw_davcal__settings]").each(function() {
-              if(jQuery(this).attr('type') == 'checkbox')
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
-              }
-              else
-              {
-                  postArray[jQuery(this).prop('name')] = jQuery(this).val();
-              }
-            });
-            jQuery('#dw_davcal__ajaxsettings').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
-            jQuery.post(
-                DOKU_BASE + 'lib/exe/ajax.php',
-                {
-                    call: 'plugin_davcal',
-                    id: dw_davcal__modals.page,
-                    page: dw_davcal__modals.page,
-                    action: 'saveSettings',
-                    params: postArray
-                },
-                function(data)
-                {
-                    var result = data['result'];
-                    var html = data['html'];
-                    jQuery('#dw_davcal__ajaxsettings').html(html);
-                    if(result === true)
+        if(!JSINFO.plugin.davcal['disable_settings'])
+        {
+            dialogButtons[LANG.plugins.davcal['save']] = function() {
+                var postArray = { };
+                jQuery("input[class=dw_davcal__settings], select[class=dw_davcal__settings]").each(function() {
+                  if(jQuery(this).attr('type') == 'checkbox')
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).prop('checked') ? 1 : 0;
+                  }
+                  else
+                  {
+                      postArray[jQuery(this).prop('name')] = jQuery(this).val();
+                  }
+                });
+                jQuery('#dw_davcal__ajaxsettings').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
+                jQuery.post(
+                    DOKU_BASE + 'lib/exe/ajax.php',
                     {
-                        location.reload();
+                        call: 'plugin_davcal',
+                        id: dw_davcal__modals.page,
+                        page: dw_davcal__modals.page,
+                        action: 'saveSettings',
+                        params: postArray
+                    },
+                    function(data)
+                    {
+                        var result = data['result'];
+                        var html = data['html'];
+                        jQuery('#dw_davcal__ajaxsettings').html(html);
+                        if(result === true)
+                        {
+                            location.reload();
+                        }
                     }
-                }
-            );
-        };
+                );
+            };
+        }
         dialogButtons[LANG.plugins.davcal['cancel']] = function () {
             dw_davcal__modals.hideSettingsDialog();
         };
+        
+        var settingsHtml = '<div><table>';
+        
+        if(JSINFO.plugin.davcal['disable_settings'] && JSINFO.plugin.davcal['disable_sync'] && JSINFO.plugin.davcal['disable_ics'])
+        {
+            settingsHtml += LANG.plugins.davcal['nothing_to_show'];
+        }
+        
+        if(!JSINFO.plugin.davcal['disable_settings'])
+        {
+            settingsHtml += '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['start_monday'] + '</td><td><input type="checkbox" name="monday" id="dw_davcal__settings_monday" class="dw_davcal__settings"></td></tr>';
+         }
+         
+         if(!JSINFO.plugin.davcal['disable_sync'])
+         {
+             settingsHtml += '<tr id="dw_davcal__settings_syncurl"><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>';
+         }
+         
+         if(!JSINFO.plugin.davcal['disable_ics'])
+         {
+             settingsHtml += '<tr id="dw_davcal__settings_privateurl"><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>';
+         }
+         
+         settingsHtml += '</table>' +
+            '</div>' +
+            '<div id="dw_davcal__ajaxsettings"></div>';
         
         dw_davcal__modals.$settingsDialog = jQuery(document.createElement('div'))
        .dialog({
@@ -185,17 +217,7 @@ var dw_davcal__modals = {
            buttons: dialogButtons,
        })
        .html(
-            '<div><table>' +
-            //'<tr><td>' + LANG.plugins.davcal['use_lang_tz'] + '</td><td><input type="checkbox" name="use_lang_tz" id="dw_davcal__settings_use_lang_tz" class="dw_davcal__settings"></td></tr>' + 
-            '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
-            '<tr><td>' + LANG.plugins.davcal['start_monday'] + '</td><td><input type="checkbox" name="monday" id="dw_davcal__settings_monday" class="dw_davcal__settings"></td></tr>' + 
-            '<tr id="dw_davcal__settings_syncurl"><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>' + 
-            '<tr id="dw_davcal__settings_privateurl"><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>' +
-            '</table>' +
-            '</div>' +
-            '<div id="dw_davcal__ajaxsettings"></div>'
+           settingsHtml
             )
        .parent()
        .attr('id','dw_davcal__settings')
@@ -209,48 +231,34 @@ var dw_davcal__modals = {
        });
        
        // Initialize current settings
-       jQuery('#dw_davcal__settings_syncurl').on('click', function() {
-           jQuery(this).select();
-       });
-       
-       jQuery('#dw_davcal__settings_privateurl').on('click', function() {
-           jQuery(this).select(); 
-       });
         
-        var $tzdropdown = jQuery('#dw_davcal__settings_timezone');
-        jQuery('#fullCalendarTimezoneList option').each(function() {
-            jQuery('<option />', {value: jQuery(this).val(), 
-                    text: jQuery(this).text()}).appendTo($tzdropdown);
-        });
-        
-        if(dw_davcal__modals.settings)
+        if(!JSINFO.plugin.davcal['disable_settings'])
         {
-            if(dw_davcal__modals.settings['timezone'] !== '')
-                jQuery('#dw_davcal__settings_timezone').val(dw_davcal__modals.settings['timezone']);
-            if(dw_davcal__modals.settings['weeknumbers'] == 1)
-                jQuery('#dw_davcal__settings_weeknumbers').prop('checked', true);
-            else
-                jQuery('#dw_davcal__settings_weeknumbers').prop('checked', false);
-                
-            if(dw_davcal__modals.settings['workweek'] == 1)
-                jQuery('#dw_davcal__settings_workweek').prop('checked', true);
-            else
-                jQuery('#dw_davcal__settings_workweek').prop('checked', false);
-                
-            if(dw_davcal__modals.settings['monday'] == 1)
-                jQuery('#dw_davcal__settings_monday').prop('checked', true);
-            else
-                jQuery('#dw_davcal__settings_monday').prop('checked', false);
-        }
-        
-        if(JSINFO.plugin.davcal['disable_sync'])
-        {
-            jQuery('#dw_davcal__settings_syncurl').remove();
-        }
-        
-        if(JSINFO.plugin.davcal['disable_ics'])
-        {
-            jQuery('#dw_davcal__settings_privateurl').remove();
+            var $tzdropdown = jQuery('#dw_davcal__settings_timezone');
+            jQuery('#fullCalendarTimezoneList option').each(function() {
+                jQuery('<option />', {value: jQuery(this).val(), 
+                        text: jQuery(this).text()}).appendTo($tzdropdown);
+            });
+            
+            if(dw_davcal__modals.settings)
+            {
+                if(dw_davcal__modals.settings['timezone'] !== '')
+                    jQuery('#dw_davcal__settings_timezone').val(dw_davcal__modals.settings['timezone']);
+                if(dw_davcal__modals.settings['weeknumbers'] == 1)
+                    jQuery('#dw_davcal__settings_weeknumbers').prop('checked', true);
+                else
+                    jQuery('#dw_davcal__settings_weeknumbers').prop('checked', false);
+                    
+                if(dw_davcal__modals.settings['workweek'] == 1)
+                    jQuery('#dw_davcal__settings_workweek').prop('checked', true);
+                else
+                    jQuery('#dw_davcal__settings_workweek').prop('checked', false);
+                    
+                if(dw_davcal__modals.settings['monday'] == 1)
+                    jQuery('#dw_davcal__settings_monday').prop('checked', true);
+                else
+                    jQuery('#dw_davcal__settings_monday').prop('checked', false);
+            }
         }
 
         // attach event handlers
