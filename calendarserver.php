@@ -14,6 +14,14 @@ session_write_close(); //close session
 
 global $conf;
 
+$hlp = null;
+$hlp =& plugin_load('helper', 'davcal');
+
+if(is_null($hlp))
+{
+    die('Error loading helper plugin');
+}
+
 $baseUri = DOKU_BASE.'lib/plugins/davcal/'.basename(__FILE__).'/';
 $sqlFile = $conf['metadir'].'/davcal.sqlite3';
 
@@ -22,7 +30,7 @@ if(!file_exists($sqlFile))
     die('SQL File doesn\'t exist');
 }
 
-if(!isset($conf['plugin']['davcal']['disable_sync']) || ($conf['plugin']['davcal']['disable_sync'] == 1))
+if($hlp->getConfig('disable_sync') === 1)
 {
     die('Synchronisation is disabled');
 }

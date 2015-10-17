@@ -118,7 +118,7 @@ class DokuWikiSabreCalendarBackend extends \Sabre\CalDAV\Backend\AbstractBackend
     function __construct(\PDO $pdo) {
 
         $this->pdo = $pdo;
-        $this->hlp = plugin_load('helper', 'davcal');
+        $this->hlp =& plugin_load('helper', 'davcal');
 
     }
 

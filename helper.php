@@ -1089,4 +1089,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return $out;
   }
   
+  /**
+   * Retrieve a configuration option for the plugin
+   * 
+   * @param string $key The key to query
+   * @return mised The option set, null if not found
+   */
+  public function getConfig($key)
+  {
+      return $this->getConf($key);
+  }
+  
 }

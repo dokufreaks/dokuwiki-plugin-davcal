@@ -12,12 +12,19 @@ session_write_close(); //close session
 $path = explode('/', $_SERVER['REQUEST_URI']);
 $icsFile = end($path);
 
-global $conf;
-if(!isset($conf['plugin']['davcal']['disable_ics']) || ($conf['plugin']['davcal']['disable_ics'] === 1))
-    die("ICS synchronisation is disabled");
-
 // Load the helper plugin
-$hlp = plugin_load('helper', 'davcal');
+$hlp = null;
+$hlp =& plugin_load('helper', 'davcal');
+
+if(is_null($hlp))
+{
+    die('Error loading helper plugin');
+}
+
+if($hlp->getConfig('disable_ics') === 1)
+{
+    die("ICS synchronisation is disabled");
+}
 
 // Retrieve calendar ID based on private URI
 $calid = $hlp->getCalendarForPrivateURL($icsFile);
