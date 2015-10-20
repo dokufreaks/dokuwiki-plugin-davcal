@@ -93,7 +93,8 @@ class syntax_plugin_davcal extends DokuWiki_Syntax_Plugin {
                         $data['view'] = 'month';
                 break;
                 case 'table':
-                    $data['table'] = true;
+                    if(($val === 'on') || ($val === 'true'))
+                        $data['table'] = true;
                 break;
                 case 'onlystart':
                     if(($val === 'on') || ($val === 'true'))
