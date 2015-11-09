@@ -499,7 +499,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $endTime = explode(':', $params['eventtotime']);
       
       // Load SabreDAV
-      require_once('vendor/autoload.php');
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $vcalendar = new \Sabre\VObject\Component\VCalendar();
       
       // Add VCalendar, UID and Event Name
@@ -622,7 +622,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $data = array();
       
       // Load SabreDAV
-      require_once('vendor/autoload.php');
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $calid = $this->getCalendarIdForPage($id);
       $color = $this->getCalendarColorForCalendar($calid);
       $startTs = new \DateTime($startDate);
@@ -787,7 +787,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $event = $this->getEventWithUid($uid);
       
       // Load SabreDAV
-      require_once('vendor/autoload.php');
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       if(!isset($event['calendardata']))
         return false;
       $uri = $event['uri'];

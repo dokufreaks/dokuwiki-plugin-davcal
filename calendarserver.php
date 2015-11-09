@@ -46,10 +46,10 @@ function exception_error_handler($errno, $errstr, $errfile, $errline) {
 //set_error_handler("exception_error_handler");
 
 // Files we need
-require_once 'vendor/autoload.php';
-require_once('authBackendDokuwiki.php');
-require_once('principalBackendDokuwiki.php');
-require_once('calendarBackendDokuwiki.php');
+require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+require_once(DOKU_PLUGIN.'davcal/authBackendDokuwiki.php');
+require_once(DOKU_PLUGIN.'davcal/principalBackendDokuwiki.php');
+require_once(DOKU_PLUGIN.'davcal/calendarBackendDokuwiki.php');
 
 // Backends - our DokuWiki backends
 $authBackend = new DokuWikiSabreAuthBackend();
