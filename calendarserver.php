@@ -14,11 +14,16 @@ session_write_close(); //close session
 
 global $conf;
 
+if($conf['allowdebug'])
+    dbglog('---- DAVCAL calendarserver.php init');
+
 $hlp = null;
 $hlp =& plugin_load('helper', 'davcal');
 
 if(is_null($hlp))
 {
+    if($conf['allowdebug'])
+        dbglog('Error loading helper plugin');
     die('Error loading helper plugin');
 }
 
@@ -27,11 +32,15 @@ $sqlFile = $conf['metadir'].'/davcal.sqlite3';
 
 if(!file_exists($sqlFile))
 {
+    if($conf['allowdebug'])
+        dbglog('SQL File doesn\'t exist: '.$sqlFile);
     die('SQL File doesn\'t exist');
 }
 
 if($hlp->getConfig('disable_sync') === 1)
 {
+    if($conf['allowdebug'])
+        dbglog('Synchronisation is disabled');
     die('Synchronisation is disabled');
 }
 
@@ -41,6 +50,8 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 //Mapping PHP errors to exceptions
 function exception_error_handler($errno, $errstr, $errfile, $errline) {
+    if($conf['allowdebug'])
+        dbglog('Exception occured: '.$errstr);
     throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
 }
 //set_error_handler("exception_error_handler");
@@ -95,5 +106,7 @@ $server->addPlugin(new Sabre\DAV\Sync\Plugin());
 $browser = new Sabre\DAV\Browser\Plugin();
 $server->addPlugin($browser);
 
+if($conf['allowdebug'])
+    dbglog('$server->exec()');
 // And off we go!
 $server->exec();

@@ -11,6 +11,13 @@ class DokuWikiSabreAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
     protected function validateUserPass($username, $password)
     {
         global $auth;
-        return $auth->checkPass($username, $password);
+        global $conf;
+        $ret = $auth->checkPass($username, $password);
+        if($conf['allowdebug'])
+        {
+            dbglog('---- DAVCAL authBackendDokuwiki.php init');
+            dbglog('checkPass called for username '.$username.' with result '.$ret);
+        }
+        return $ret;
     }
 }

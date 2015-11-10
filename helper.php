@@ -18,14 +18,21 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     */
   public function helper_plugin_davcal() {
     $this->sqlite =& plugin_load('helper', 'sqlite');
+    global $conf;
+    if($conf['allowdebug'])
+        dbglog('---- DAVCAL helper.php init');
     if(!$this->sqlite)
     {
+        if($conf['allowdebug'])
+            dbglog('This plugin requires the sqlite plugin. Please install it.');
         msg('This plugin requires the sqlite plugin. Please install it.');
         return;
     }
     
     if(!$this->sqlite->init('davcal', DOKU_PLUGIN.'davcal/db/'))
     {
+        if($conf['allowdebug'])
+            dbglog('Error initialising the SQLite DB for DAVCal');
         return;
     }
   }
@@ -1093,7 +1100,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * Retrieve a configuration option for the plugin
    * 
    * @param string $key The key to query
-   * @return mised The option set, null if not found
+   * @return mixed The option set, null if not found
    */
   public function getConfig($key)
   {
