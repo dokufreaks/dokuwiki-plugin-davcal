@@ -21,13 +21,17 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
       
       $lang = $conf['lang'];
       
-      if(strpos($lang, "de") === 0)
+      switch($lang)
       {
-          $lc = 'de';
-      }
-      else 
-      {
-          $lc = 'en';    
+        case 'de':
+        case 'de-informal':
+            $lc = 'de';
+            break;
+        case 'nl':
+            $lc = 'nl';
+            break;
+        default:
+            $lc = 'en';
       }
       
       $JSINFO['plugin']['davcal']['language'] = $lc;
