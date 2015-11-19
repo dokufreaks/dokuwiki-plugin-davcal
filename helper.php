@@ -520,6 +520,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($description !== '')
         $event->add('DESCRIPTION', $description);
       
+      // Add attachments
+      $attachments = $params['attachments'];
+      foreach($attachments as $attachment)
+        $event->add('ATTACH', $attachment);
+      
       // Create a timestamp for last modified, created and dtstamp values in UTC
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
       $event->add('DTSTAMP', $dtStamp);
@@ -722,6 +727,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $entry['description'] = (string)$description;
       else
         $entry['description'] = '';
+      $attachments = $event->ATTACH;
+      if($attachments !== null)
+      {
+        $entry['attachments'] = array();
+        foreach($attachments as $attachment)
+          $entry['attachments'][] = (string)$attachment;
+      }
       $entry['title'] = (string)$event->summary;
       $entry['id'] = $uid;
       $entry['page'] = $page;
@@ -813,12 +825,18 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $vevent->remove('DESCRIPTION');      
       $vevent->remove('DTSTAMP');
       $vevent->remove('LAST-MODIFIED');
+      $vevent->remove('ATTACH');
       
       // Add new time stamps and description
       $vevent->add('DTSTAMP', $dtStamp);
       $vevent->add('LAST-MODIFIED', $dtStamp);
       if($description !== '')
         $vevent->add('DESCRIPTION', $description);
+      
+      // Add attachments
+      $attachments = $params['attachments'];
+      foreach($attachments as $attachment)
+        $vevent->add('ATTACH', $attachment);
       
       // Setup DTSTART      
       $dtStart = new \DateTime();
@@ -827,7 +845,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($params['allday'] != '1')
         $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
       
-      // Setup DETEND
+      // Setup DTEND
       $dtEnd = new \DateTime();
       $dtEnd->setTimezone($timezone);      
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));

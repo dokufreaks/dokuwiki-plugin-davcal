@@ -50,3 +50,8 @@
 .dw_davcal__text {
     width: 220px;
 }
+
+#dw_davcal__editevent_attachments td {
+    border: 0;
+    
+}

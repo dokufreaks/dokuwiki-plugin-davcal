@@ -120,6 +120,7 @@ var dw_davcal__modals = {
     $editEventDialog: null,
     $dialog: null,
     $settingsDialog: null,
+    $inputDialog: null,
     msg: null,
     completeCb: null,
     action: null,
@@ -344,11 +345,20 @@ var dw_davcal__modals = {
                 if(!dw_davcal__modals.checkEvents())
                   return;
                 var postArray = { };
+                var attachArr = new Array();
                 var pageid = dw_davcal__modals.page;
                 if(dw_davcal__modals.settings['multi'])
                 {
                     pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
                 }
+                jQuery('.dw_davcal__editevent_attachment_link').each(function() {
+                    var attachment = jQuery(this).attr('href');
+                    if(attachment != undefined)
+                    {
+                        attachArr.push(attachment);
+                    }
+                });
+                postArray['attachments'] = attachArr;
                 jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
@@ -448,6 +458,7 @@ var dw_davcal__modals = {
 
                 var postArray = { };
                 var pageid = dw_davcal__modals.page;
+                var attachArr = new Array();
                 if(dw_davcal__modals.settings['multi'])
                 {
                     pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
@@ -462,6 +473,14 @@ var dw_davcal__modals = {
                       postArray[jQuery(this).prop('name')] = jQuery(this).val();
                   }
                 });
+                jQuery('.dw_davcal__editevent_attachment_link').each(function() {
+                    var attachment = jQuery(this).attr('href');
+                    if(attachment != undefined)
+                    {
+                        attachArr.push(attachment);
+                    }
+                });
+                postArray['attachments'] = attachArr;
                 jQuery('#dw_davcal__ajaxedit').html('<img src="'+DOKU_BASE+'lib/images/throbber.gif" alt="" width="16" height="16" />');
                 jQuery.post(
                     DOKU_BASE + 'lib/exe/ajax.php',
@@ -506,6 +525,7 @@ var dw_davcal__modals = {
             '<tr><td>' + LANG.plugins.davcal['from'] + '</td><td><input type="text" name="eventfrom" id="dw_davcal__eventfrom_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventfromtime" id="dw_davcal__eventfromtime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['to'] + '</td><td><input type="text" name="eventto" id="dw_davcal__eventto_edit" class="dw_davcal__editevent dw_davcal__date"><input type="text" name="eventtotime" id="dw_davcal__eventtotime_edit" class="dw_davcal__editevent dw_davcal__time"></td></tr>' +
             '<tr><td colspan="2"><input type="checkbox" name="allday" id="dw_davcal__allday_edit" class="dw_davcal__editevent">' + LANG.plugins.davcal['allday'] + '</td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['attachments'] + '</td><td><table id="dw_davcal__editevent_attachments"><tbody><tr><td><input type="text" id="dw_davcal__editevent_attachment" value="http://"></td><td><a href="#" id="dw_davcal__editevent_attach">' + LANG.plugins.davcal['add_attachment'] + '</a></td></tr></tbody></table></td></tr>' +
             '</table>' +
             recurringWarning + 
             '<input type="hidden" name="uid" id="dw_davcal__uid_edit" class="dw_davcal__editevent">' +
@@ -545,6 +565,27 @@ var dw_davcal__modals = {
        jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
        jQuery('#dw_davcal__eventfromtime_edit').val(calEvent.start.format('HH:mm'));
        jQuery('#dw_davcal__eventdescription_edit').val(calEvent.description);
+       if(calEvent.attachments && (calEvent.attachments !== null))
+       {
+           for(var i=0; i<calEvent.attachments.length; i++)
+           {
+               var url = calEvent.attachments[i];
+               var row = '<tr><td><a href="' + url + '" class="dw_davcal__editevent_attachment_link">' + url + '</a></td><td><a class="deleteLink" href="#">' + LANG.plugins.davcal['delete'] + '</a></td></tr>';
+               jQuery('#dw_davcal__editevent_attachments > tbody:last').append(row);
+
+           }
+       }
+       dw_davcal__modals.attachAttachmentDeleteHandlers();
+       jQuery('#dw_davcal__editevent_attach').on("click", function(e)
+       {
+           e.preventDefault();
+           var url = jQuery('#dw_davcal__editevent_attachment').val();
+           jQuery('#dw_davcal__editevent_attachment').val('http://');
+           var row = '<tr><td><a href="' + url + '" class="dw_davcal__editevent_attachment_link">' + url + '</a></td><td><a class="deleteLink" href="#">' + LANG.plugins.davcal['delete'] + '</a></td></tr>';
+           jQuery('#dw_davcal__editevent_attachments > tbody:last').append(row);
+           dw_davcal__modals.attachAttachmentDeleteHandlers();
+           return false;
+       });
        if(calEvent.allDay && (calEvent.end === null))
        {
            jQuery('#dw_davcal__eventto_edit').val(calEvent.start.format('YYYY-MM-DD'));
@@ -601,6 +642,21 @@ var dw_davcal__modals = {
             }
         });
         jQuery('#dw_davcal__allday_edit').change();
+    },
+    
+    attachAttachmentDeleteHandlers: function()
+    {
+       jQuery("#dw_davcal__editevent_attachments .deleteLink").on("click", function(e)
+       {
+            e.preventDefault();
+            var tr = jQuery(this).closest('tr');
+            tr.css("background-color", "#FF3700");
+            tr.fadeOut(400, function()
+            {
+                tr.remove();
+            });
+            return false;
+       });
     },
     
     /**

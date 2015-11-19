@@ -48,3 +48,5 @@ $lang['js']['no_permission'] = 'Sie haben nicht die erforderlichen Rechte, diese
 $lang['js']['calendar'] = 'Kalender';
 $lang['js']['start_monday'] = 'Die Woche beginnt am Montag';
 $lang['js']['nothing_to_show'] = 'Nichts anzuzeigen';
+$lang['js']['add_attachment'] = 'Anhang hinzufügen';
+$lang['js']['attachments'] = 'Angehängte Webseiten';
