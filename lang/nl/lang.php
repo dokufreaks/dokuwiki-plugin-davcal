@@ -48,3 +48,5 @@ $lang['js']['no_permission'] = 'U heeft onvoldoende rechten om deze kalender te 
 $lang['js']['calendar'] = 'Kalender';
 $lang['js']['start_monday'] = 'Week begint op maandag';
 $lang['js']['nothing_to_show'] = 'Niets weer te geven';
+$lang['js']['add_attachment'] = 'Voeg Link toe';
+$lang['js']['attachments'] = 'Bijgevoegde Links';

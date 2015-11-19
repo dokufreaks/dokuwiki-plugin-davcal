@@ -50,5 +50,5 @@ $lang['js']['no_permission'] = 'You don\'t have permission to modify this calend
 $lang['js']['calendar'] = 'Calendar';
 $lang['js']['start_monday'] = 'Week starts on Monday';
 $lang['js']['nothing_to_show'] = 'Nothing to show';
-$lang['js']['add_attachment'] = 'Add attachment';
-$lang['js']['attachments'] = 'Attached Webpages';
+$lang['js']['add_attachment'] = 'Add link';
+$lang['js']['attachments'] = 'Attached links';
