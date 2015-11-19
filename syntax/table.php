@@ -164,11 +164,16 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $R->tablerow_open();
             $R->tablecell_open();
             $from = new \DateTime($event['start']);
-            $to = new \DateTime($event['end']);
             $R->doc .= $from->format($data['dateformat']);
             $R->tablecell_close();
             if(!$data['onlystart'])
             {
+                $to = new \DateTime($event['end']);
+                // Fixup all day events, which have one day in excess
+                if($event['allDay'] === true)
+                {
+                    $to->sub(new \DateInterval('P1D'));
+                }
                 $R->tablecell_open();
                 $R->doc .= $to->format($data['dateformat']);
                 $R->tablecell_close();
