@@ -69,11 +69,16 @@ jQuery(function() {
                     wknum = true;
                 if(data['settings']['timezone'] !== '')
                     tz = data['settings']['timezone'];
+                if(data['settings']['meta']['forcetimezone'] !== 'no')
+                    tz = data['settings']['meta']['forcetimezone'];
                 if(data['settings']['workweek'] == 1)
                     we = false;
                 if(data['settings']['monday'] == 1)
                     firstday = 1;
                 var defaultView = data['settings']['meta']['view'];
+                // The current TZ value holds either the uers's selection or
+                // the force timezone value
+                dw_davcal__modals.currentTz = (tz === false) ? '' : tz;
                 // Initialize the davcal popup
                 var res = jQuery('#fullCalendar').fullCalendar({
                     dayClick: function(date, jsEvent, view) {
@@ -128,6 +133,7 @@ var dw_davcal__modals = {
     settings: null,
     page: null,
     detectedTz: null,
+    currentTz: null,
     
     /**
      * Show the settings dialog
@@ -530,6 +536,7 @@ var dw_davcal__modals = {
             recurringWarning + 
             '<input type="hidden" name="uid" id="dw_davcal__uid_edit" class="dw_davcal__editevent">' +
             '<input type="hidden" name="detectedtz" id="dw_davcal__tz_edit" class="dw_davcal__editevent">' +
+            '<input type="hidden" name="currenttz" id="dw_davcal__currenttz_edit" class="dw_davcal__editevent">' +
             '</div>' +
             '<div id="dw_davcal__ajaxedit"></div>'
             )
@@ -560,6 +567,7 @@ var dw_davcal__modals = {
        
        // Set up existing/predefined values
        jQuery('#dw_davcal__tz_edit').val(dw_davcal__modals.detectedTz);
+       jQuery('#dw_davcal__currenttz_edit').val(dw_davcal__modals.currentTz);
        jQuery('#dw_davcal__uid_edit').val(calEvent.id);
        jQuery('#dw_davcal__eventname_edit').val(calEvent.title);
        jQuery('#dw_davcal__eventfrom_edit').val(calEvent.start.format('YYYY-MM-DD'));
@@ -644,6 +652,9 @@ var dw_davcal__modals = {
         jQuery('#dw_davcal__allday_edit').change();
     },
     
+    /**
+     * Attach handles to delete the attachments to all 'delete' links
+     */
     attachAttachmentDeleteHandlers: function()
     {
        jQuery("#dw_davcal__editevent_attachments .deleteLink").on("click", function(e)

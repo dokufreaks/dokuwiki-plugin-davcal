@@ -61,7 +61,8 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                       'description' => $this->getLang('created_by_davcal'),
                       'id' => array(),
                       'settings' => 'show',
-                      'view' => 'month'
+                      'view' => 'month',
+                      'forcetimezone' => 'no'
                       );
         $lastid = $ID;
         foreach($options as $option)
@@ -84,6 +85,13 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                         $data['view'] = $val;
                     else
                         $data['view'] = 'month';
+                break;
+                case 'forcetimezone':
+                    $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
+                    if(in_array($val, $tzlist) || $val === 'no')
+                        $data['forcetimezone'] = $val;
+                    else
+                        msg($this->getLang('error_timezone_not_in_list'), -1);
                 break;
                 default:
                     $data[$key] = $val;
@@ -122,6 +130,8 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
         
         // Render the Calendar. Timezone list is within a hidden div,
         // the calendar ID is in a data-calendarid tag.
+        if($data['forcetimezone'] !== 'no')
+            $R->doc .= '<div id="fullCalendarTimezoneWarning">'.sprintf($this->getLang('this_calendar_uses_timezone'), $data['forcetimezone']).'</div>';
         $R->doc .= '<div id="fullCalendar" data-calendarpage="'.$ID.'"></div>';
         $R->doc .= '<div id="fullCalendarTimezoneList" class="fullCalendarTimezoneList" style="display:none">';
         $R->doc .= '<select id="fullCalendarTimezoneDropdown">';

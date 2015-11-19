@@ -96,9 +96,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       $meta = $this->getCalendarMetaForPage($id);
       if(isset($meta['id']))
-      {
           return array_keys($meta['id']);
-      }
       return false;
   }
   
@@ -474,8 +472,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * Add a new iCal entry for a given page, i.e. a given calendar.
    * 
    * The parameter array needs to contain
-   *   timezone         => The timezone of the entries
    *   detectedtz       => The timezone as detected by the browser
+   *   currenttz        => The timezone in use by the calendar
    *   eventfrom        => The event's start date
    *   eventfromtime    => The event's start time
    *   eventto          => The event's end date
@@ -491,10 +489,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function addCalendarEntryToCalendarForPage($id, $user, $params)
   {
-      $settings = $this->getPersonalSettings($user);
-      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
-          $timezone = new \DateTimeZone($settings['timezone']);
-      elseif($settings['timezone'] === 'local')
+      if($params['currenttz'] !== '' && $params['currenttz'] !== 'local')
+          $timezone = new \DateTimeZone($params['currenttz']);
+      elseif($params['currenttz'] === 'local')
           $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
@@ -522,8 +519,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       // Add attachments
       $attachments = $params['attachments'];
-      foreach($attachments as $attachment)
-        $event->add('ATTACH', $attachment);
+      if(!is_null($attachments))
+        foreach($attachments as $attachment)
+          $event->add('ATTACH', $attachment);
       
       // Create a timestamp for last modified, created and dtstamp values in UTC
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
@@ -624,11 +622,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * 
    * @return array An array containing the calendar entries.
    */
-  public function getEventsWithinDateRange($id, $user, $startDate, $endDate)
+  public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone)
   {
-      $settings = $this->getPersonalSettings($user);
-      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
-          $timezone = new \DateTimeZone($settings['timezone']);
+      if($timezone !== '' && $timezone !== 'local')
+          $timezone = new \DateTimeZone($timezone);
       else
           $timezone = new \DateTimeZone('UTC');
       $data = array();
@@ -787,10 +784,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function editCalendarEntryForPage($id, $user, $params)
   {
-      $settings = $this->getPersonalSettings($user);
-      if($settings['timezone'] !== '' && $settings['timezone'] !== 'local')
-          $timezone = new \DateTimeZone($settings['timezone']);
-      elseif($settings['timezone'] === 'local')
+      if($params['currenttz'] !== '' && $params['currenttz'] !== 'local')
+          $timezone = new \DateTimeZone($params['currenttz']);
+      elseif($params['currenttz'] === 'local')
           $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
@@ -835,8 +831,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       // Add attachments
       $attachments = $params['attachments'];
-      foreach($attachments as $attachment)
-        $vevent->add('ATTACH', $attachment);
+      if(!is_null($attachments))
+        foreach($attachments as $attachment)
+          $vevent->add('ATTACH', $attachment);
       
       // Setup DTSTART      
       $dtStart = new \DateTime();

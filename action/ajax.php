@@ -82,11 +82,12 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getEvents':
               $startDate = $INPUT->post->str('start');
               $endDate = $INPUT->post->str('end');
+              $timezone = $INPUT->post->str('timezone');
               $data = array();
               foreach($calendarPages as $calPage)
               {
                   $data = array_merge($data, $this->hlp->getEventsWithinDateRange($calPage, 
-                                      $user, $startDate, $endDate)); 
+                                      $user, $startDate, $endDate, $timezone)); 
               }
           break;
           // Edit an event

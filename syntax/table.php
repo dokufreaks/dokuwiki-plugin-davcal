@@ -63,7 +63,8 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                       'numdays' => 30,
                       'dateformat' => 'Y-m-d H:i',
                       'onlystart' => false,
-                      'sort' => 'desc'
+                      'sort' => 'desc',
+                      'timezone' => 'local'
                       );
         $lastid = $ID;
 
@@ -82,6 +83,13 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 case 'onlystart':
                     if(($val === 'on') || ($val === 'true'))
                         $data['onlystart'] = true;
+                break;
+                case 'timezone':
+                    $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
+                    if(in_array($val, $tzlist) || $val === 'no')
+                        $data['timezone'] = $val;
+                    else
+                        msg($this->getLang('error_timezone_not_in_list'), -1);
                 break;
                 default:
                     $data[$key] = $val;
@@ -131,10 +139,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $from = new \DateTime($from);
         $to = clone $from;
         $to->add(new \DateInterval('P'.$data['numdays'].'D'));
+        $timezone = $data['timezone'];
         foreach($data['id'] as $calPage => $color)
         {
             $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage, 
-                                      $user, $from->format('Y-m-d'), $to->format('Y-m-d'))); 
+                                      $user, $from->format('Y-m-d'), $to->format('Y-m-d'),
+                                      $timezone)); 
         }
         if($data['sort'] === 'desc')
             usort($events, array("syntax_plugin_davcal_table", "sort_events_desc"));
