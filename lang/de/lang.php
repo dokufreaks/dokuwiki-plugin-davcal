@@ -53,3 +53,4 @@ $lang['js']['nothing_to_show'] = 'Nichts anzuzeigen';
 $lang['js']['add_attachment'] = 'Link hinzufügen';
 $lang['js']['attachments'] = 'Angehängte Links';
 $lang['js']['language_specific'] = 'Sprachabhängig';
+$lang['js']['sync_ical'] = 'iCal Sync URL';

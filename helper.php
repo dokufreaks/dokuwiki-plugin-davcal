@@ -168,6 +168,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
   
   /**
+   * Get the user's principal URL for iOS sync
+   * @param string $user the user name
+   * @return the URL to the principal sync
+   */
+  public function getPrincipalUrlForUser($user)
+  {
+      if(is_null($user))
+        return false;
+      $url = DOKU_URL.'lib/plugins/davcal/calendarserver.php/principals/'.$user;
+      return $url;
+  }
+  
+  /**
    * Set the calendar color for a given page.
    * 
    * @param string $color The color definition

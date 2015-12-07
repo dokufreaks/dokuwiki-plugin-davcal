@@ -206,12 +206,13 @@ var dw_davcal__modals = {
          
          if(!JSINFO.plugin.davcal['disable_sync'])
          {
-             settingsHtml += '<tr id="dw_davcal__settings_syncurl"><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>';
+             settingsHtml += '<tr id="dw_davcal__settings_syncurl"><td>' + LANG.plugins.davcal['sync_url'] + '</td><td><input type="text" name="syncurl" readonly="readonly" id="dw_davcal__settings_syncurl_edit" class="dw_davcal__text" value="' + dw_davcal__modals.settings['syncurl'] + '"></td></tr>';
+             settingsHtml += '<tr id="dw_davcal__settings_principalurl"><td>' + LANG.plugins.davcal['sync_ical'] + '</td><td><input type="text" name="principalurl" readonly="readonly" id="dw_davcal__settings_principalurl_edit" class="dw_davcal__text" value="' + dw_davcal__modals.settings['principalurl'] + '"></td></tr>';
          }
          
          if(!JSINFO.plugin.davcal['disable_ics'])
          {
-             settingsHtml += '<tr id="dw_davcal__settings_privateurl"><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>';
+             settingsHtml += '<tr id="dw_davcal__settings_privateurl"><td>' + LANG.plugins.davcal['private_url'] + '</td><td><input type="text" name="privateurl" readonly="readonly" id="dw_davcal__settings_privateurl_edit" class="dw_davcal__text" value="' + dw_davcal__modals.settings['privateurl'] + '"></td></tr>';
          }
          
          settingsHtml += '</table>' +
@@ -254,6 +255,23 @@ var dw_davcal__modals = {
             jQuery('<option />', {value: 'lang', text: LANG.plugins.davcal['language_specific']}).appendTo($tfdropdown);
             jQuery('<option />', {value: '24h', text: '24h'}).appendTo($tfdropdown);
             jQuery('<option />', {value: '12h', text: '12h'}).appendTo($tfdropdown);
+            
+            if(!JSINFO.plugin.davcal['disable_sync'])
+            {
+                jQuery('#dw_davcal__settings_syncurl_edit').on('click', function() {
+                    jQuery(this).select();
+                });
+                jQuery('#dw_davcal__settings_principalurl_edit').on('click', function() {
+                    jQuery(this).select();
+                });
+            }
+            
+            if(!JSINFO.plugin.davcal['disable_ics'])
+            {
+                jQuery('#dw_davcal__settings_privateurl_edit').on('click', function() {
+                    jQuery(this).select(); 
+                });
+            }
             
             if(dw_davcal__modals.settings)
             {

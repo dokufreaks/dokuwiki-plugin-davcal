@@ -50,3 +50,5 @@ $lang['js']['start_monday'] = 'Week begint op maandag';
 $lang['js']['nothing_to_show'] = 'Niets weer te geven';
 $lang['js']['add_attachment'] = 'Voeg Link toe';
 $lang['js']['attachments'] = 'Bijgevoegde Links';
+$lang['js']['language_specific'] = 'Language specific';
+$lang['js']['sync_ical'] = 'iCal Sync URL';

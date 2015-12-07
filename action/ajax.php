@@ -127,6 +127,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $data['settings']['readonly'] = !$write;
               $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($page, $user);
               $data['settings']['privateurl'] = $this->hlp->getPrivateURLForPage($page);
+              $data['settings']['principalurl'] = $this->hlp->getPrincipalUrlForUser($user);
               $data['settings']['meta'] = $this->hlp->getCalendarMetaForPage($page);
           break;
           // Save personal settings
