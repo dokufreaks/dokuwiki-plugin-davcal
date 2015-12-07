@@ -12,3 +12,4 @@ $conf['monday']                 = 0;
 $conf['timezone']               = 'local';
 $conf['workweek']               = 0;
 $conf['weeknumbers']            = 0;
+$conf['timeformat']             = 'lang';

@@ -58,29 +58,12 @@ jQuery(function() {
             if(result === true)
             {
                 dw_davcal__modals.settings = data['settings'];
-                var wknum = false;
                 var tz = false;
-                var we = true;
-                var ro = false;
-                var firstday = 0;
-                var detectedTz = jstz.determine().name();
-                dw_davcal__modals.detectedTz = detectedTz;
-                if(data['settings']['weeknumbers'] == 1)
-                    wknum = true;
                 if(data['settings']['timezone'] !== '')
                     tz = data['settings']['timezone'];
                 if(data['settings']['meta']['forcetimezone'] !== 'no')
                     tz = data['settings']['meta']['forcetimezone'];
-                if(data['settings']['workweek'] == 1)
-                    we = false;
-                if(data['settings']['monday'] == 1)
-                    firstday = 1;
-                var defaultView = data['settings']['meta']['view'];
-                // The current TZ value holds either the uers's selection or
-                // the force timezone value
-                dw_davcal__modals.currentTz = (tz === false) ? '' : tz;
-                // Initialize the davcal popup
-                var res = jQuery('#fullCalendar').fullCalendar({
+                var fcOptions = {
                     dayClick: function(date, jsEvent, view) {
                         dw_davcal__modals.showEditEventDialog(date, false);
                     },
@@ -107,12 +90,30 @@ jQuery(function() {
                         right: 'month,agendaWeek,agendaDay'
                     },
                     lang: JSINFO.plugin.davcal['language'],
-                    weekNumbers: wknum,
+                    weekNumbers: (data['settings']['weeknumbers'] == 1) ? true : false,
                     timezone: tz,
-                    weekends: we,
-                    firstDay: firstday,
-                    defaultView: defaultView
-                });
+                    weekends: (data['settings']['workweek'] == 1) ? false : true,
+                    firstDay: (data['settings']['monday'] == 1) ? 1 : 0,
+                    defaultView: data['settings']['meta']['view']
+                };
+                if(data['settings']['timeformat'] !== 'lang')
+                {
+                    if(data['settings']['timeformat'] == '24h')
+                    {
+                        fcOptions.timeFormat = 'H:mm';
+                    }
+                    if(data['settings']['timeformat'] == '12h')
+                    {
+                        fcOptions.timeFormat = 'h:mmt';
+                    }
+                }
+                var detectedTz = jstz.determine().name();
+                dw_davcal__modals.detectedTz = detectedTz;
+                // The current TZ value holds either the uers's selection or
+                // the force timezone value
+                dw_davcal__modals.currentTz = (tz === false) ? '' : tz;
+                // Initialize the davcal popup
+                var res = jQuery('#fullCalendar').fullCalendar(fcOptions);
             }
         }
     );    
@@ -197,6 +198,7 @@ var dw_davcal__modals = {
         if(!JSINFO.plugin.davcal['disable_settings'])
         {
             settingsHtml += '<tr><td>' + LANG.plugins.davcal['timezone'] + '</td><td><select name="timezone" id="dw_davcal__settings_timezone" class="dw_davcal__settings"></select></td></tr>' +
+            '<tr><td>' + LANG.plugins.davcal['timeformat'] + '</td><td><select name="timeformat" id="dw_davcal__settings_timeformat" class="dw_davcal__settings"></select></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['weeknumbers'] + '</td><td><input type="checkbox" name="weeknumbers" id="dw_davcal__settings_weeknumbers" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['only_workweek'] + '</td><td><input type="checkbox" name="workweek" id="dw_davcal__settings_workweek" class="dw_davcal__settings"></td></tr>' +
             '<tr><td>' + LANG.plugins.davcal['start_monday'] + '</td><td><input type="checkbox" name="monday" id="dw_davcal__settings_monday" class="dw_davcal__settings"></td></tr>';
@@ -248,8 +250,14 @@ var dw_davcal__modals = {
                         text: jQuery(this).text()}).appendTo($tzdropdown);
             });
             
+            var $tfdropdown = jQuery('#dw_davcal__settings_timeformat');
+            jQuery('<option />', {value: 'lang', text: LANG.plugins.davcal['language_specific']}).appendTo($tfdropdown);
+            jQuery('<option />', {value: '24h', text: '24h'}).appendTo($tfdropdown);
+            jQuery('<option />', {value: '12h', text: '12h'}).appendTo($tfdropdown);
+            
             if(dw_davcal__modals.settings)
             {
+                jQuery('#dw_davcal__settings_timeformat').val(dw_davcal__modals.settings['timeformat']);
                 if(dw_davcal__modals.settings['timezone'] !== '')
                     jQuery('#dw_davcal__settings_timezone').val(dw_davcal__modals.settings['timezone']);
                 if(dw_davcal__modals.settings['weeknumbers'] == 1)

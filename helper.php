@@ -299,7 +299,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         'timezone' => $this->getConf('timezone'),
         'weeknumbers' => $this->getConf('weeknumbers'),
         'workweek' => $this->getConf('workweek'),
-        'monday' => $this->getConf('monday')
+        'monday' => $this->getConf('monday'),
+        'timeformat' => $this->getConf('timeformat')
       );
       if(is_null($userid))
       {

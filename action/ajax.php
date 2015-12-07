@@ -136,6 +136,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $settings['timezone'] = $params['timezone'];
               $settings['workweek'] = $params['workweek'];
               $settings['monday'] = $params['monday'];
+              $settings['timeformat'] = $params['timeformat'];
               if($this->hlp->savePersonalSettings($settings, $user))
               {
                   $data['result'] = true;
