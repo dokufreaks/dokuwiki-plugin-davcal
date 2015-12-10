@@ -54,3 +54,4 @@ $lang['js']['add_attachment'] = 'Add link';
 $lang['js']['attachments'] = 'Attached links';
 $lang['js']['language_specific'] = 'Language specific';
 $lang['js']['sync_ical'] = 'iCal Sync URL';
+$lang['js']['timeformat'] = 'Time Format';
