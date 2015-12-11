@@ -15,6 +15,7 @@ $lang['at'] = 'Am';
 $lang['description'] = 'Beschreibung';
 $lang['title'] = 'Titel';
 $lang['error_timezone_not_in_list'] = 'Die angegebene Zeitzone wird von PHP nicht unterstützt';
+$lang['error_option_error'] = 'In den Optionen wurden ein Fehler festgestellt!';
 $lang['this_calendar_uses_timezone'] = 'Dieser Kalender wird in der Zeitzone %s angezeigt.';
 $lang['js']['create_new_event'] = 'Neuen Eintrag anlegen';
 $lang['js']['cancel'] = 'Abbrechen';

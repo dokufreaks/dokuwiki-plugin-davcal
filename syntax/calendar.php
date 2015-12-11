@@ -62,7 +62,8 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                       'id' => array(),
                       'settings' => 'show',
                       'view' => 'month',
-                      'forcetimezone' => 'no'
+                      'forcetimezone' => 'no',
+                      'forcetimeformat' => 'no'
                       );
         $lastid = $ID;
         foreach($options as $option)
@@ -92,6 +93,13 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                         $data['forcetimezone'] = $val;
                     else
                         msg($this->getLang('error_timezone_not_in_list'), -1);
+                break;
+                case 'forcetimeformat':
+                    $tfopt = array('lang', '24h', '12h');
+                    if(in_array($val, $tfopt) || $val === 'no')
+                        $data['forcetimeformat'] = $val;
+                    else
+                        msg($this->getLang('error_option_error'), -1);
                 break;
                 default:
                     $data[$key] = $val;

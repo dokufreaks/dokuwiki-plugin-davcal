@@ -52,3 +52,4 @@ $lang['js']['add_attachment'] = 'Voeg Link toe';
 $lang['js']['attachments'] = 'Bijgevoegde Links';
 $lang['js']['language_specific'] = 'Language specific';
 $lang['js']['sync_ical'] = 'iCal Sync URL';
+$lang['js']['timeformat'] = 'Tijd Formaat';

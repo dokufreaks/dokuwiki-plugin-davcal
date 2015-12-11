@@ -61,6 +61,7 @@ jQuery(function() {
                 var tz = false;
                 if(data['settings']['timezone'] !== '')
                     tz = data['settings']['timezone'];
+                // Force-overwrite thhe timezone setting if requested
                 if(data['settings']['meta']['forcetimezone'] !== 'no')
                     tz = data['settings']['meta']['forcetimezone'];
                 var fcOptions = {
@@ -96,13 +97,19 @@ jQuery(function() {
                     firstDay: (data['settings']['monday'] == 1) ? 1 : 0,
                     defaultView: data['settings']['meta']['view']
                 };
-                if(data['settings']['timeformat'] !== 'lang')
+                var timeformat = data['settings']['timeformat'];
+                // Force-overwrite the user's timezone setting if requested by the calendar
+                if(data['settings']['meta']['forcetimeformat'] !== 'no')
+                    timeformat = data['settings']['meta']['forcetimeformat'];
+                if(timeformat !== 'lang')
                 {
-                    if(data['settings']['timeformat'] == '24h')
+                    // If the time format is language-based, we don't need to pass
+                    // the timeFormat option to fullCalendar
+                    if(timeformat == '24h')
                     {
                         fcOptions.timeFormat = 'H:mm';
                     }
-                    if(data['settings']['timeformat'] == '12h')
+                    if(timeformat == '12h')
                     {
                         fcOptions.timeFormat = 'h:mmt';
                     }
@@ -275,7 +282,8 @@ var dw_davcal__modals = {
             
             if(dw_davcal__modals.settings)
             {
-                jQuery('#dw_davcal__settings_timeformat').val(dw_davcal__modals.settings['timeformat']);
+                if(dw_davcal__modals.settings['timeformat'] !== '')
+                    jQuery('#dw_davcal__settings_timeformat').val(dw_davcal__modals.settings['timeformat']);
                 if(dw_davcal__modals.settings['timezone'] !== '')
                     jQuery('#dw_davcal__settings_timezone').val(dw_davcal__modals.settings['timezone']);
                 if(dw_davcal__modals.settings['weeknumbers'] == 1)
@@ -292,6 +300,10 @@ var dw_davcal__modals = {
                     jQuery('#dw_davcal__settings_monday').prop('checked', true);
                 else
                     jQuery('#dw_davcal__settings_monday').prop('checked', false);
+                if(dw_davcal__modals.settings['meta']['forcetimezone'] !== 'no')
+                    jQuery('#dw_davcal__settings_timezone').prop('disabled', true);
+                if(dw_davcal__modals.settings['meta']['forcetimeformat'] !== 'no')
+                    jQuery('#dw_davcal__settings_timeformat').prop('disabled', true);
             }
         }
 
