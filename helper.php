@@ -700,19 +700,31 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
         $dtStart = $start->getDateTime();
         $dtStart->setTimezone($timezone);
-        $entry['start'] = $dtStart->format(\DateTime::ATOM);
+        
+        // moment.js doesn't like times be given even if 
+        // allDay is set to true
+        // This should fix T23
         if($start['VALUE'] == 'DATE')
+        {
           $entry['allDay'] = true;
+          $entry['start'] = $dtStart->format("Y-m-d");
+        }
         else
+        {
           $entry['allDay'] = false;
+          $entry['start'] = $dtStart->format(\DateTime::ATOM);
+        }
       }
       $end = $event->DTEND;
-      // Parse onlyl if the end date/time is present
+      // Parse only if the end date/time is present
       if($end !== null)
       {
         $dtEnd = $end->getDateTime();
         $dtEnd->setTimezone($timezone);
-        $entry['end'] = $dtEnd->format(\DateTime::ATOM);
+        if($end['VALUE'] == 'DATE')
+          $entry['end'] = $dtEnd->format("Y-m-d");
+        else 
+          $entry['end'] = $dtEnd->format(\DateTime::ATOM);
       }
       $description = $event->DESCRIPTION;
       if($description !== null)
