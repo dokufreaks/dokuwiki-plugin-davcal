@@ -662,16 +662,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               {
                   $rEvents = new \Sabre\VObject\Recur\EventIterator(array($vcal->VEVENT));
                   $rEvents->rewind();
-                  $done = false;
-                  while($rEvents->valid() && !$done)
+                  while($rEvents->valid())
                   {
                       $event = $rEvents->getEventObject();
                       // If we are after the given time range, exit
                       if(($endTs !== null) && ($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()))
-                      {
-                        $done = true;
-                        continue;
-                      }
+                          break;
                         
                       // If we are before the given time range, continue
                       if(($startTs != null) && ($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp()))
