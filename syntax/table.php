@@ -62,6 +62,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                       'startdate' => 'today',
                       'numdays' => 30,
                       'dateformat' => 'Y-m-d H:i',
+                      'alldayformat' => 'Y-m-d',
                       'onlystart' => false,
                       'sort' => 'desc',
                       'timezone' => 'local'
@@ -134,9 +135,19 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         $events = array();
         $from = $data['startdate'];
         if($from === 'today')
+        {
             $from = new \DateTime();
+        }
+        elseif(strpos($from, 'today-') === 0)
+        {
+            $days = intval(str_replace('today-', '', str_replace(' ', '', $from)));
+            $from = new \DateTime();
+            $from->sub(new \DateInterval('P'.$days.'D'));
+        }
         else
+        {
             $from = new \DateTime($from);
+        }
         $to = clone $from;
         $to->add(new \DateInterval('P'.$data['numdays'].'D'));
         $timezone = $data['timezone'];
@@ -174,7 +185,10 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $R->tablerow_open();
             $R->tablecell_open();
             $from = new \DateTime($event['start']);
-            $R->doc .= $from->format($data['dateformat']);
+            if($event['allDay'] === true)
+                $R->doc .= $from->format($data['alldayformat']);
+            else
+                $R->doc .= $from->format($data['dateformat']);
             $R->tablecell_close();
             if(!$data['onlystart'])
             {
@@ -185,7 +199,10 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                     $to->sub(new \DateInterval('P1D'));
                 }
                 $R->tablecell_open();
-                $R->doc .= $to->format($data['dateformat']);
+                if($event['allDay'] === true)
+                    $R->doc .= $to->format($data['alldayformat']);
+                else
+                    $R->doc .= $to->format($data['dateformat']);
                 $R->tablecell_close();
             }
             $R->tablecell_open();
