@@ -185,6 +185,11 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $R->tablerow_open();
             $R->tablecell_open();
             $from = new \DateTime($event['start']);
+            if($timezone !== 'local')
+            {
+                $from->setTimezone($timezone);
+                $to->setTimezone($timezone);
+            }
             if($event['allDay'] === true)
                 $R->doc .= $from->format($data['alldayformat']);
             else
