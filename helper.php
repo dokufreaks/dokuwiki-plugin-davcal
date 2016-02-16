@@ -631,13 +631,22 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $calid = $this->getCalendarIdForPage($id);
       $color = $this->getCalendarColorForCalendar($calid);
-      $startTs = new \DateTime($startDate);
-      $endTs = new \DateTime($endDate);
-      
+      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
+      $startTs = null;
+      $endTs = null;
+      if($startDate !== null)
+      {
+        $startTs = new \DateTime($startDate);
+        $query .= " AND lastoccurence > ".$this->sqlite->quote_string($startTs->getTimestamp());
+      }
+      if($endDate !== null)
+      {
+        $endTs = new \DateTime($endDate);
+        $query .= " AND firstoccurence < ".$this->sqlite->quote_string($endTs->getTimestamp());
+      }
+
       // Retrieve matching calendar objects
-      $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ? ".
-               "AND firstoccurence < ? AND lastoccurence > ?";
-      $res = $this->sqlite->query($query, $calid, $endTs->getTimestamp(), $startTs->getTimestamp());
+      $res = $this->sqlite->query($query, $calid);
       $arr = $this->sqlite->res2arr($res);
       
       // Parse individual calendar entries
@@ -658,12 +667,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                   {
                       $event = $rEvents->getEventObject();
                       // If we are after the given time range, exit
-                      if(($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()) &&
-                         ($rEvents->getDtEnd()->getTimestamp() > $endTs->getTimestamp()))
+                      if(($endTs !== null) && ($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()))
+                      {
                         $done = true;
+                        continue;
+                      }
                         
                       // If we are before the given time range, continue
-                      if($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp())
+                      if(($startTs != null) && ($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp()))
                       {
                           $rEvents->next();
                           continue;

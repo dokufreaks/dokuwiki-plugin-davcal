@@ -61,6 +61,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         $data = array('id' => array(),
                       'startdate' => 'today',
                       'numdays' => 30,
+                      'startisend' => false,
                       'dateformat' => 'Y-m-d H:i',
                       'alldayformat' => 'Y-m-d',
                       'onlystart' => false,
@@ -84,6 +85,10 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 case 'onlystart':
                     if(($val === 'on') || ($val === 'true'))
                         $data['onlystart'] = true;
+                break;
+                case 'startisend':
+                    if(($val === 'on') || ($val === 'true'))
+                        $data['startisend'] = true;
                 break;
                 case 'timezone':
                     $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
@@ -134,34 +139,77 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 
         $events = array();
         $from = $data['startdate'];
+        $toStr = null;
+        
+        // Handle the various options to 'startDate'
         if($from === 'today')
         {
             $from = new \DateTime();
         }
         elseif(strpos($from, 'today-') === 0)
         {
-            $days = intval(str_replace('today-', '', str_replace(' ', '', $from)));
+            $days = intval(str_replace('today-', '', $from));
             $from = new \DateTime();
             $from->sub(new \DateInterval('P'.$days.'D'));
+        }
+        elseif(strpos($from, 'today+') === 0)
+        {
+            $days = intval(str_replace('today+', '', $from));
+            $from = new \DateTime();
+            $from->add(new \DateInterval('P'.$days.'D'));
         }
         else
         {
             $from = new \DateTime($from);
         }
-        $to = clone $from;
-        $to->add(new \DateInterval('P'.$data['numdays'].'D'));
+        
+        // Handle the option 'startisend'
+        if($data['startisend'] === true)
+        {
+            if($data['numdays'] > 0)
+            {
+                $to = clone $from;
+                $to->sub(new \DateInterval('P'.$data['numdays'].'D'));
+                $fromStr = $to->format('Y-m-d');
+            }
+            else
+            {
+                $fromStr = null;
+            }
+            $toStr = $from->format('Y-m-d');
+        }
+        else
+        {
+            if($data['numdays'] > 0)
+            {
+                $to = clone $from;
+                $to->add(new \DateInterval('P'.$data['numdays'].'D'));
+                $toStr = $to->format('Y-m-d');
+            }
+            else
+            {
+                $toStr = null;
+            }
+            $fromStr = $from->format('Y-m-d');
+        }
+
+        // Support for timezone
         $timezone = $data['timezone'];
+        
+        // Fetch the events
         foreach($data['id'] as $calPage => $color)
         {
-            $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage, 
-                                      $user, $from->format('Y-m-d'), $to->format('Y-m-d'),
-                                      $timezone)); 
+            $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage,
+                                      $user, $fromStr, $toStr, $timezone));
+
         }
+        // Sort the events
         if($data['sort'] === 'desc')
             usort($events, array("syntax_plugin_davcal_table", "sort_events_desc"));
         else
             usort($events, array("syntax_plugin_davcal_table", "sort_events_asc"));
         
+        // Create tabular output
         $R->table_open();
         $R->tablethead_open();
         $R->tableheader_open();
