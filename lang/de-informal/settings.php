@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * German language file for DAVCal
+ * 
+ * @author Andreas Böhler <dev@aboehler.at>
+ */
 $lang['hide_settings'] = 'Verstecke den Knopf Einstellungen unterhalb des Kalenders';
 $lang['disable_sync'] = 'Deaktiviere CalDAV Synchronisation (aber erlaube Private URL)';
 $lang['disable_ics'] = 'Deaktiviere Private URL Synchronisation (aber erlaube CalDAV Synchronisierung)';

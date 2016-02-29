@@ -1,4 +1,9 @@
 <?php
+/**
+ * English language file for DAVCal
+ * 
+ * @author Andreas Böhler <dev@aboehler.at>
+ */
 $lang['created_by_davcal'] = 'Created by DAVCal for DokuWiki';
 $lang['unknown_error'] = 'Unknown Error';
 $lang['event_added'] = 'Event added';

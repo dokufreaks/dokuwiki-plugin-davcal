@@ -1,4 +1,9 @@
 <?php
+/**
+ * Dutch language file for DAVCal
+ * 
+ * @author Willem-Jan de Hoog 
+ */
 $lang['created_by_davcal'] = 'Gemaakt door DAVCal for DokuWiki';
 $lang['unknown_error'] = 'Onbekende fout';
 $lang['event_added'] = 'Gebeurtenis toegevoegd';
