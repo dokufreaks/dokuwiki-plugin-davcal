@@ -12,3 +12,4 @@ $lang['monday'] = 'Wochenbeginn ist am Montag statt am Sonntag';
 $lang['timezone'] = 'Setze die Zeitzone des Kalenders (zB "Europe/Vienna" oder "local" für Browser-basierende Zeit)';
 $lang['workweek'] = 'Zeige nur die Arbeitswoche';
 $lang['weeknumbers'] = 'Zeige Wochennummern';
+$lang['timeformat'] = 'Zeitformat, \'lang\' bedeutet sprachbasiert';

@@ -2,6 +2,7 @@
 /* DOKUWIKI:include_once fullcalendar-2.4.0/fullcalendar.js */
 /* DOKUWIKI:include_once fullcalendar-2.4.0/lang/de.js */
 /* DOKUWIKI:include_once fullcalendar-2.4.0/lang/en.js */
+/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/fr.js */
 /* DOKUWIKI:include_once fullcalendar-2.4.0/lang/nl.js */
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
 /* DOKUWIKI:include_once jstz.js */

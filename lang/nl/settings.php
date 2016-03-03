@@ -12,4 +12,4 @@ $lang['monday'] = 'Week begint op maandag in plaats van zondag';
 $lang['timezone'] = 'Tijdzone van de kalender (bijvoorbeeld "Europe/Vienna" of "local" (van browser))';
 $lang['workweek'] = 'Toon alleen werkdagen';
 $lang['weeknumbers'] = 'Toon weeknummers';
-
+$lang['timeformat'] = 'Tijd Formaat';

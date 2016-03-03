@@ -11,3 +11,4 @@ $lang['monday'] = 'Commencer la semaine le lundi au lieu du dimanche';
 $lang['timezone'] = 'Régler le fuseau horaire du calendrier  (e.g. "Europe/Vienna" ou "local" basé sur le navigateur)';
 $lang['workweek'] = 'Afficher seulement la semaine';
 $lang['weeknumbers'] = 'Afficher les numéros de semaine';
+$lang['timeformat'] = 'Format d\'heure du greffon Davcal';

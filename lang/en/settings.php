@@ -11,3 +11,4 @@ $lang['monday'] = 'Start week on Monday instead of Sunday';
 $lang['timezone'] = 'Set the timezone of the calendar (e.g. "Europe/Vienna" or "local" for browser-based)';
 $lang['workweek'] = 'Show only workweek';
 $lang['weeknumbers'] = 'Show week numbers';
+$lang['timeformat'] = 'Time format to use, lang means based on language';
