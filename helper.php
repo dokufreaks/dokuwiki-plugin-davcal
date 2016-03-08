@@ -778,7 +778,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getAllCalendarEvents($calid)
   {
-      $query = "SELECT calendardata, uid, componenttype, uri FROM calendarobjects WHERE calendarid = ?".
+      $query = "SELECT calendardata, uid, componenttype, uri FROM calendarobjects WHERE calendarid = ?";
       $res = $this->sqlite->query($query, $calid);
       $arr = $this->sqlite->res2arr($res);
       return $arr;
@@ -1087,7 +1087,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   /**
    * Return a given calendar as ICS feed, i.e. all events in one ICS file.
    * 
-   * @param string $caldi The calendar ID to retrieve
+   * @param string $calid The calendar ID to retrieve
    * 
    * @return mixed The calendar events as string or false
    */
@@ -1100,14 +1100,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($events === false)
         return false;
       
-      $out = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//DAVCal//DAVCal for DokuWiki//EN\nCALSCALE:GREGORIAN\nX-WR-CALNAME:";
-      $out .= $calSettings['displayname']."\n";
+      // Load SabreDAV
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');      
+      $out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//DAVCal//DAVCal for DokuWiki//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:";
+      $out .= $calSettings['displayname']."\r\n";
       foreach($events as $event)
       {
-          $out .= rtrim($event['calendardata']);
-          $out .= "\n";
+          $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
+          $evt = $vcal->VEVENT;
+          $out .= $evt->serialize();
       }
-      $out .= "END:VCALENDAR\n";
+      $out .= "END:VCALENDAR\r\n";
       return $out;
   }
   
