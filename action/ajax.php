@@ -51,6 +51,13 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       {
           $write = true;
       }
+      elseif($acl < AUTH_READ)
+      {
+          $data['result'] = false;
+          $data['html'] = $this->getLang('no_permission');
+          // Set to an invalid action in order to just return the result
+          $action = 'invalid';
+      }
       
       // Retrieve the calendar pages based on the meta data
       $calendarPages = $this->hlp->getCalendarPagesByMeta($page);

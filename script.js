@@ -595,6 +595,9 @@ var dw_davcal__modals = {
        for(var i=0; i<dw_davcal__modals.settings['calids'].length; i++)
        {
            var sel = '';
+           // When creating an event, do not show read-only calendars
+           if(!edit && (dw_davcal__modals.settings['calids'][i]['write'] === false))
+             continue;
            if(calEvent.page == dw_davcal__modals.settings['calids'][i]['page'])
              sel = ' selected="selected"';
            $dropdown.append('<option value="' + dw_davcal__modals.settings['calids'][i]['page'] + '"' + sel + '>' + dw_davcal__modals.settings['calids'][i]['name'] + '</option>');

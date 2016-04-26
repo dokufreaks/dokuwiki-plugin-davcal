@@ -96,7 +96,21 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       $meta = $this->getCalendarMetaForPage($id);
       if(isset($meta['id']))
-          return array_keys($meta['id']);
+      {
+          // Filter the list of pages by permission
+          $pages = array_keys($meta['id']);
+          $retList = array();
+          foreach($pages as $page)
+          {
+            if(auth_quickaclcheck($page) >= AUTH_READ)
+            {
+                $retList[] = $page;
+            }
+          }
+          if(empty($retList))
+            return false;
+          return $retList;
+      }
       return false;
   }
   
@@ -118,8 +132,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
             $settings = $this->getCalendarSettings($calid);
             $name = $settings['displayname'];
             $color = $settings['calendarcolor'];
+            $write = (auth_quickaclcheck($page) > AUTH_READ);
             $data[] = array('name' => $name, 'page' => $page, 'calid' => $calid,
-                            'color' => $color);
+                            'color' => $color, 'write' => $write);
           }
       }
       return $data;
