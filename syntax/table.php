@@ -196,8 +196,11 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         // Support for timezone
         $timezone = $data['timezone'];
         
+        // Filter events by user permissions
+        $userEvents = $this->hlp->filterCalendarPagesByUserPermission($data['id']);
+        
         // Fetch the events
-        foreach($data['id'] as $calPage => $color)
+        foreach($userEvents as $calPage => $color)
         {
             $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage,
                                       $user, $fromStr, $toStr, $timezone));

@@ -80,6 +80,26 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
   
   /**
+   * Filter calendar pages and return only those where the current
+   * user has at least read permission.
+   * 
+   * @param array $calendarPages Array with calendar pages to check
+   * @return array with filtered calendar pages
+   */
+  public function filterCalendarPagesByUserPermission($calendarPages)
+  {
+      $retList = array();
+      foreach($calendarPages as $page => $data)
+      {
+          if(auth_quickaclcheck($page) >= AUTH_READ)
+          {
+              $retList[$page] = $data;
+          }
+      }
+      return $retList;
+  }
+  
+  /**
    * Get all calendar pages used by a given page
    * based on the stored metadata
    * 
@@ -98,18 +118,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(isset($meta['id']))
       {
           // Filter the list of pages by permission
-          $pages = array_keys($meta['id']);
-          $retList = array();
-          foreach($pages as $page)
-          {
-            if(auth_quickaclcheck($page) >= AUTH_READ)
-            {
-                $retList[] = $page;
-            }
-          }
-          if(empty($retList))
+          $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
+          $pages = array_keys($pages);
+          if(empty($pages))
             return false;
-          return $retList;
+          return $pages;
       }
       return false;
   }
