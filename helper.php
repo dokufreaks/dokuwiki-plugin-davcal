@@ -119,7 +119,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           // Filter the list of pages by permission
           $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
-          $pages = array_keys($pages);
           if(empty($pages))
             return false;
           return $pages;
@@ -137,14 +136,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   public function getCalendarMapForIDs($calendarPages)
   {
       $data = array();
-      foreach($calendarPages as $page)
+      foreach($calendarPages as $page => $color)
       {
           $calid = $this->getCalendarIdForPage($page);
           if($calid !== false)
           {
             $settings = $this->getCalendarSettings($calid);
             $name = $settings['displayname'];
-            $color = $settings['calendarcolor'];
             $write = (auth_quickaclcheck($page) > AUTH_READ);
             $data[] = array('name' => $name, 'page' => $page, 'calid' => $calid,
                             'color' => $color, 'write' => $write);
@@ -644,10 +642,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param string $user The user ID to work with
    * @param string $startDate The start date as a string
    * @param string $endDate The end date as a string
+   * @param string $color (optional) The calendar's color
    * 
    * @return array An array containing the calendar entries.
    */
-  public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone)
+  public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone, $color = null)
   {
       if($timezone !== '' && $timezone !== 'local')
           $timezone = new \DateTimeZone($timezone);
@@ -658,7 +657,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $calid = $this->getCalendarIdForPage($id);
-      $color = $this->getCalendarColorForCalendar($calid);
+      if(is_null($color))
+        $color = $this->getCalendarColorForCalendar($calid);
       $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
       $startTs = null;
       $endTs = null;

@@ -63,7 +63,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       $calendarPages = $this->hlp->getCalendarPagesByMeta($page);
       if($calendarPages === false)
       {
-          $calendarPages = array($page);
+          $calendarPages = array($page => null);
       }
       if(count($calendarPages) > 1)
         $multi = true;
@@ -91,10 +91,10 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
               $endDate = $INPUT->post->str('end');
               $timezone = $INPUT->post->str('timezone');
               $data = array();
-              foreach($calendarPages as $calPage)
+              foreach($calendarPages as $calPage => $color)
               {
                   $data = array_merge($data, $this->hlp->getEventsWithinDateRange($calPage, 
-                                      $user, $startDate, $endDate, $timezone)); 
+                                      $user, $startDate, $endDate, $timezone, $color)); 
               }
           break;
           // Edit an event

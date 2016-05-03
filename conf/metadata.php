@@ -1,6 +1,6 @@
 <?php
 /**
- * Options for the datapopup plugin
+ * Options for the davcal plugin
  *
  * @author Andreas Boehler <dev@aboehler.at>
  */
