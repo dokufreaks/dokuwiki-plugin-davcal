@@ -91,7 +91,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $retList = array();
       foreach($calendarPages as $page => $data)
       {
-          if(auth_quickaclcheck($page) >= AUTH_READ)
+          // WebDAV Connections are always readable
+          if(strpos($page, 'webdav://') === 0)
+          {
+              $retList[$page] = $data;
+          }
+          elseif(auth_quickaclcheck($page) >= AUTH_READ)
           {
               $retList[$page] = $data;
           }
@@ -115,6 +120,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       
       $meta = $this->getCalendarMetaForPage($id);
+
       if(isset($meta['id']))
       {
           // Filter the list of pages by permission
@@ -138,15 +144,34 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $data = array();
       foreach($calendarPages as $page => $color)
       {
-          $calid = $this->getCalendarIdForPage($page);
-          if($calid !== false)
-          {
-            $settings = $this->getCalendarSettings($calid);
-            $name = $settings['displayname'];
-            $write = (auth_quickaclcheck($page) > AUTH_READ);
+            if(strpos($page, 'webdav://') === 0)
+            {
+                $wdc =& plugin_load('helper', 'webdavclient');
+                if(is_null($wdc))
+                    continue;
+                $connectionId = str_replace('webdav://', '', $page);
+                $settings = $wdc->getConnection($connectionId);
+                $name = $settings['displayname'];
+                $write = false;
+                $calid = $connectionId;
+            }
+            else
+            {
+                $calid = $this->getCalendarIdForPage($page);
+                if($calid !== false)
+                {
+                    $settings = $this->getCalendarSettings($calid);
+                    $name = $settings['displayname'];
+                    //$color = $settings['calendarcolor'];
+                    $write = (auth_quickaclcheck($page) > AUTH_READ);
+                }
+                else
+                {
+                    continue;
+                }
+            }
             $data[] = array('name' => $name, 'page' => $page, 'calid' => $calid,
                             'color' => $color, 'write' => $write);
-          }
       }
       return $data;
   }
@@ -654,11 +679,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone('UTC');
       $data = array();
       
-      // Load SabreDAV
-      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
-      $calid = $this->getCalendarIdForPage($id);
-      if(is_null($color))
-        $color = $this->getCalendarColorForCalendar($calid);
       $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
       $startTs = null;
       $endTs = null;
@@ -672,10 +692,30 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $endTs = new \DateTime($endDate);
         $query .= " AND firstoccurence < ".$this->sqlite->quote_string($endTs->getTimestamp());
       }
-
-      // Retrieve matching calendar objects
-      $res = $this->sqlite->query($query, $calid);
-      $arr = $this->sqlite->res2arr($res);
+      
+      // Load SabreDAV
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+      
+      if(strpos($id, 'webdav://') === 0)
+      {
+          // FIXME: This returns *all* events, not only those within the
+          // requested date range.
+          $wdc =& plugin_load('helper', 'webdavclient');
+          if(is_null($wdc))
+            return $data;
+          $connectionId = str_replace('webdav://', '', $id);
+          $arr = $wdc->getCalendarEntries($connectionId, $startDate, $endDate);
+      }
+      else
+      {
+          $calid = $this->getCalendarIdForPage($id);
+          if(is_null($color))
+            $color = $this->getCalendarColorForCalendar($calid);
+    
+          // Retrieve matching calendar objects
+          $res = $this->sqlite->query($query, $calid);
+          $arr = $this->sqlite->res2arr($res);
+      }
       
       // Parse individual calendar entries
       foreach($arr as $row)
