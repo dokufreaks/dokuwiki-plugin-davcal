@@ -152,7 +152,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                 $connectionId = str_replace('webdav://', '', $page);
                 $settings = $wdc->getConnection($connectionId);
                 $name = $settings['displayname'];
-                $write = false;
+                $write = $settings['write'];
                 $calid = $connectionId;
             }
             else
@@ -620,22 +620,34 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $dtEndEv['VALUE'] = 'DATE';
       }
       
-      // Actually add the values to the database
-      $calid = $this->getCalendarIdForPage($id);
-      $uri = uniqid('dokuwiki-').'.ics';
-      $now = new DateTime();
       $eventStr = $vcalendar->serialize();
       
-      $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, componenttype, firstoccurence, lastoccurence, size, etag, uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-      $res = $this->sqlite->query($query, $calid, $uri, $eventStr, $now->getTimestamp(), 'VEVENT',
-                                  $event->DTSTART->getDateTime()->getTimeStamp(), $event->DTEND->getDateTime()->getTimeStamp(),
-                                  strlen($eventStr), md5($eventStr), $uuid);
-      
-      // If successfully, update the sync token database
-      if($res !== false)
+      if(strpos($id, 'webdav://') === 0)
       {
-          $this->updateSyncTokenLog($calid, $uri, 'added');
-          return true;
+          $wdc =& plugin_load('helper', 'webdavclient');
+          if(is_null($wdc))
+            return false;
+          $connectionId = str_replace('webdav://', '', $id);
+          return $wdc->addCalendarEntry($connectionId, $eventStr);
+      }
+      else 
+      {
+          // Actually add the values to the database
+          $calid = $this->getCalendarIdForPage($id);
+          $uri = uniqid('dokuwiki-').'.ics';
+          $now = new DateTime();
+          
+          $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, componenttype, firstoccurence, lastoccurence, size, etag, uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+          $res = $this->sqlite->query($query, $calid, $uri, $eventStr, $now->getTimestamp(), 'VEVENT',
+                                      $event->DTSTART->getDateTime()->getTimeStamp(), $event->DTEND->getDateTime()->getTimeStamp(),
+                                      strlen($eventStr), md5($eventStr), $uuid);
+          
+          // If successfully, update the sync token database
+          if($res !== false)
+          {
+              $this->updateSyncTokenLog($calid, $uri, 'added');
+              return true;
+          }
       }
       return false;
   }
@@ -698,8 +710,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       if(strpos($id, 'webdav://') === 0)
       {
-          // FIXME: This returns *all* events, not only those within the
-          // requested date range.
           $wdc =& plugin_load('helper', 'webdavclient');
           if(is_null($wdc))
             return $data;
@@ -879,7 +889,18 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       
       // Retrieve the existing event based on the UID
       $uid = $params['uid'];
-      $event = $this->getEventWithUid($uid);
+      
+      if(strpos($id, 'webdav://') === 0)
+      {
+        $wdc =& plugin_load('helper', 'webdavclient');
+        if(is_null($wdc))
+          return false;
+        $event = $wdc->getCalendarEntryByUid($uid);
+      }
+      else
+      {
+        $event = $this->getEventWithUid($uid);
+      }
       
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
@@ -943,17 +964,25 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $dtStartEv['VALUE'] = 'DATE';
           $dtEndEv['VALUE'] = 'DATE';
       }
-      $now = new DateTime();
       $eventStr = $vcal->serialize();
-      // Actually write to the database
-      $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
-               "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
-      $res = $this->sqlite->query($query, $eventStr, $now->getTimestamp(), $dtStart->getTimestamp(),
-                                  $dtEnd->getTimestamp(), strlen($eventStr), md5($eventStr), $uid);
-      if($res !== false)
+      if(strpos($id, 'webdav://') === 0)
       {
-          $this->updateSyncTokenLog($calid, $uri, 'modified');
-          return true;
+          $connectionId = str_replace('webdav://', '', $id);
+          return $wdc->editCalendarEntry($connectionId, $uid, $eventStr);
+      }
+      else
+      {
+          $now = new DateTime();
+          // Actually write to the database
+          $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
+                   "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
+          $res = $this->sqlite->query($query, $eventStr, $now->getTimestamp(), $dtStart->getTimestamp(),
+                                      $dtEnd->getTimestamp(), strlen($eventStr), md5($eventStr), $uid);
+          if($res !== false)
+          {
+              $this->updateSyncTokenLog($calid, $uri, 'modified');
+              return true;
+          }
       }
       return false;
   }
@@ -970,6 +999,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   public function deleteCalendarEntryForPage($id, $params)
   {
       $uid = $params['uid'];
+      if(strpos($id, 'webdav://') === 0)
+      {
+        $wdc =& plugin_load('helper', 'webdavclient');
+        if(is_null($wdc))
+          return false;
+        $connectionId = str_replace('webdav://', '', $id);
+        $result = $wdc->deleteCalendarEntry($connectionId, $uid);
+        return $result;
+      }
       $event = $this->getEventWithUid($uid);
       $calid = $event['calendarid'];
       $uri = $event['uri'];

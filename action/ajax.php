@@ -75,9 +75,17 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'newEvent':
               if($write)
               {
-                  $data['result'] = true;
-                  $data['html'] = $this->getLang('event_added');
-                  $this->hlp->addCalendarEntryToCalendarForPage($id, $user, $params);
+                  $res = $this->hlp->addCalendarEntryToCalendarForPage($id, $user, $params);
+                  if($res === true)
+                  {
+                    $data['result'] = true;
+                    $data['html'] = $this->getLang('event_added');
+                  }
+                  else
+                  {
+                    $data['result'] = false;
+                    $data['html'] = $this->getLang('unknown_error');
+                  }
               }
               else
               {
@@ -101,9 +109,17 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'editEvent':
               if($write)
               {
-                  $data['result'] = true;
-                  $data['html'] = $this->getLang('event_edited');
-                  $this->hlp->editCalendarEntryForPage($id, $user, $params);
+                  $res = $this->hlp->editCalendarEntryForPage($id, $user, $params);
+                  if($res === true)
+                  {
+                    $data['result'] = true;
+                    $data['html'] = $this->getLang('event_edited');
+                  }
+                  else
+                  {
+                    $data['result'] = false;
+                    $data['html'] = $this->getLang('unknown_error');
+                  }
               }
               else
               {
@@ -115,9 +131,17 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'deleteEvent':
               if($write)
               {
-                  $data['result'] = true;
-                  $data['html'] = $this->getLang('event_deleted');
-                  $this->hlp->deleteCalendarEntryForPage($id, $params);
+                  $res = $this->hlp->deleteCalendarEntryForPage($id, $params);
+                  if($res === true)
+                  {
+                    $data['result'] = true;
+                    $data['html'] = $this->getLang('event_deleted');
+                  }
+                  else
+                  {
+                    $data['result'] = false;
+                    $data['html'] = $this->getLang('unknown_error');
+                  }
               }
               else 
               {
