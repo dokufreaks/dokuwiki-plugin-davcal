@@ -39,6 +39,12 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       $write = false;
       $multi = false;
       
+      if(!checkSecurityToken())
+      {
+          echo "CSRF Attack.";
+          return;
+      }
+      
       $data = array();
       
       $data['result'] = false;

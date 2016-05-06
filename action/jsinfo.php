@@ -37,6 +37,7 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
             $lc = 'en';
       }
       
+      $JSINFO['plugin']['davcal']['sectok'] = getSecurityToken();
       $JSINFO['plugin']['davcal']['language'] = $lc;
       if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
       {
