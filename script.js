@@ -51,7 +51,8 @@ jQuery(function() {
             id: dw_davcal__modals.page,
             page: dw_davcal__modals.page,
             action: 'getSettings',
-            params: postArray
+            params: postArray,
+            sectok: JSINFO.plugin.davcal['sectok']
         },
         function(data)
         {
@@ -79,7 +80,8 @@ jQuery(function() {
                             call: 'plugin_davcal',
                             action: 'getEvents',
                             id: dw_davcal__modals.page,
-                            page: dw_davcal__modals.page
+                            page: dw_davcal__modals.page,
+                            sectok: JSINFO.plugin.davcal['sectok']
                         },
                         error: function() {
                             dw_davcal__modals.msg = LANG.plugins.davcal['error_retrieving_data'];
@@ -177,7 +179,8 @@ var dw_davcal__modals = {
                         id: dw_davcal__modals.page,
                         page: dw_davcal__modals.page,
                         action: 'saveSettings',
-                        params: postArray
+                        params: postArray,
+                        sectok: JSINFO.plugin.davcal['sectok']
                     },
                     function(data)
                     {
@@ -422,7 +425,8 @@ var dw_davcal__modals = {
                         id: pageid,
                         page: dw_davcal__modals.page,
                         action: 'editEvent',
-                        params: postArray
+                        params: postArray,
+                        sectok: JSINFO.plugin.davcal['sectok']
                     },
                     function(data)
                     {
@@ -534,7 +538,8 @@ var dw_davcal__modals = {
                         id: pageid,
                         page: dw_davcal__modals.page,
                         action: 'newEvent',
-                        params: postArray
+                        params: postArray,
+                        sectok: JSINFO.plugin.davcal['sectok']
                     },
                     function(data)
                     {
@@ -740,7 +745,8 @@ var dw_davcal__modals = {
                                     action: dw_davcal__modals.action,
                                     params: {
                                         uid: dw_davcal__modals.uid
-                                    }
+                                    },
+                                    sectok: JSINFO.plugin.davcal['sectok']
                                 },
                                 function(data)
                                 {
