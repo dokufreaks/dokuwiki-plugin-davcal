@@ -28,14 +28,6 @@ if(is_null($hlp))
 }
 
 $baseUri = DOKU_BASE.'lib/plugins/davcal/'.basename(__FILE__).'/';
-$sqlFile = $conf['metadir'].'/davcal.sqlite3';
-
-if(!file_exists($sqlFile))
-{
-    if($conf['allowdebug'])
-        dbglog('SQL File doesn\'t exist: '.$sqlFile);
-    die('SQL File doesn\'t exist');
-}
 
 if($hlp->getConfig('disable_sync') === 1)
 {
@@ -43,10 +35,6 @@ if($hlp->getConfig('disable_sync') === 1)
         dbglog('Synchronisation is disabled');
     die('Synchronisation is disabled');
 }
-
-/* Database */
-$pdo = new PDO('sqlite:'.$sqlFile);
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 //Mapping PHP errors to exceptions
 function exception_error_handler($errno, $errstr, $errfile, $errline) {
@@ -64,14 +52,14 @@ require_once(DOKU_PLUGIN.'davcal/calendarBackendDokuwiki.php');
 
 // Backends - our DokuWiki backends
 $authBackend = new DokuWikiSabreAuthBackend();
-$calendarBackend = new DokuWikiSabreCalendarBackend($pdo);
+$calendarBackend = new DokuWikiSabreCalendarBackend($hlp);
 $principalBackend = new DokuWikiSabrePrincipalBackend();
 
 // Directory structure
-$tree = [
+$tree = array(
     new Sabre\CalDAV\Principal\Collection($principalBackend),
     new Sabre\CalDAV\CalendarRoot($principalBackend, $calendarBackend),
-];
+);
 
 $server = new Sabre\DAV\Server($tree);
 
