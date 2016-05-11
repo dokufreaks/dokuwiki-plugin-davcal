@@ -53,7 +53,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
     /**
      * Handle the match
      */
-    function handle($match, $state, $pos, &$handler){
+    function handle($match, $state, $pos, Doku_Handler $handler){
         global $ID;
         $options = trim(substr($match,9,-2));
         $options = explode(',', $options);
@@ -131,7 +131,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
     /**
      * Create output
      */
-    function render($format, &$R, $data) {
+    function render($format, Doku_Renderer $R, $data) {
         if($format != 'xhtml') return false;
         global $ID;
         $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
