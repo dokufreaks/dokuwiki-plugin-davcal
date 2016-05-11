@@ -302,6 +302,66 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
   
   /**
+   * Update a calendar's displayname
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $name The new calendar name
+   * 
+   * @return boolean True on success, otherwise false
+   */
+  public function updateCalendarName($calid, $name)
+  {
+      $query = "UPDATE calendars SET displayname = ? WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid, $name);
+      if($res !== false)
+      {
+        $this->updateSyncTokenLog($calid, '', 'modified');
+        return true;
+      }
+      return false;
+  }
+  
+  /**
+   * Update the calendar description
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $description The new calendar's description
+   * 
+   * @return boolean True on success, otherwise false
+   */
+  public function updateCalendarDescription($calid, $description)
+  {
+      $query = "UPDATE calendars SET description = ? WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid, $description);
+      if($res !== false)
+      {
+        $this->updateSyncTokenLog($calid, '', 'modified');
+        return true;
+      }
+      return false;
+  }
+  
+  /**
+   * Update a calendar's timezone information
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $timezone The new timezone to set
+   * 
+   * @return boolean True on success, otherwise false
+   */
+  public function updateCalendarTimezone($calid, $timezone)
+  {
+      $query = "UPDATE calendars SET timezone = ? WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid, $timezone);
+      if($res !== false)
+      {
+        $this->updateSyncTokenLog($calid, '', 'modified');
+        return true;
+      }
+      return false;
+  }
+  
+  /**
    * Save the personal settings to the SQLite database 'calendarsettings'.
    * 
    * @param array  $settings The settings array to store
@@ -527,6 +587,74 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
 
   /**
+   * Add a new calendar entry to the given calendar. Calendar data is
+   * specified as ICS file, thus it needs to be parsed first.
+   * 
+   * This is mainly needed for the sync support.
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $uri The new object URI
+   * @param string $ics The ICS file
+   * 
+   * @return mixed The etag.
+   */
+  public function addCalendarEntryToCalendarByICS($calid, $uri, $ics)
+  {
+    $extraData = $this->getDenormalizedData($ics);
+
+    $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, etag, size, componenttype, firstoccurence, lastoccurence, uid) VALUES (?,?,?,?,?,?,?,?,?,?)";
+    $res = $this->sqlite->query($query, 
+            $calid,
+            $uri,
+            $ics,
+            time(),
+            $extraData['etag'],
+            $extraData['size'],
+            $extraData['componentType'],
+            $extraData['firstOccurence'],
+            $extraData['lastOccurence'],
+            $extraData['uid']);
+            // If successfully, update the sync token database
+    if($res !== false)
+    {
+        $this->updateSyncTokenLog($calid, $uri, 'added');
+    }
+    return $extraData['etag'];
+  }
+  
+  /**
+   * Edit a calendar entry by providing a new ICS file. This is mainly
+   * needed for the sync support.
+   * 
+   * @param int $calid The calendar's IS
+   * @param string $uri The object's URI to modify
+   * @param string $ics The new object's ICS file
+   */
+  public function editCalendarEntryToCalendarByICS($calid, $uri, $ics)
+  {
+      $extraData = $this->getDenormalizedData($ics);
+
+      $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, etag = ?, size = ?, componenttype = ?, firstoccurence = ?, lastoccurence = ?, uid = ? WHERE calendarid = ? AND uri = ?";
+      $res = $this->sqlite->query($query, 
+        $ics,
+        time(),
+        $extraData['etag'],
+        $extraData['size'],
+        $extraData['componentType'],
+        $extraData['firstOccurence'], 
+        $extraData['lastOccurence'], 
+        $extraData['uid'], 
+        $calid,
+        $uri
+      );
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'modified');
+      }
+      return $extraData['etag'];
+  }
+
+  /**
    * Add a new iCal entry for a given page, i.e. a given calendar.
    * 
    * The parameter array needs to contain
@@ -661,7 +789,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getCalendarSettings($calid)
   {
-      $query = "SELECT principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id= ? ";
+      $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id= ? ";
       $res = $this->sqlite->query($query, $calid);
       $row = $this->sqlite->res2row($res);
       return $row;
@@ -848,6 +976,60 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
   
   /**
+   * Retrieve information of a calendar's object, not including the actual
+   * calendar data! This is mainly neede for the sync support.
+   * 
+   * @param int $calid The calendar ID
+   * 
+   * @return mixed The result
+   */
+  public function getCalendarObjects($calid)
+  {
+      $query = "SELECT id, uri, lastmodified, etag, calendarid, size, componenttype FROM calendarobjects WHERE calendarid = ?";
+      $res = $this->sqlite->query($query, $calid);
+      $arr = $this->sqlite->res2arr($res);
+      return $arr; 
+  }
+  
+  /**
+   * Retrieve a single calendar object by calendar ID and URI
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $uri The object's URI
+   * 
+   * @return mixed The result
+   */
+  public function getCalendarObjectByUri($calid, $uri)
+  {
+      $query = "SELECT id, uri, lastmodified, etag, calendarid, size, calendardata, componenttype FROM calendarobjects WHERE calendarid = ? AND uri = ?";
+      $res = $this->sqlite->query($query, $calid, $uri);
+      $row = $this->sqlite->res2row($res);
+      return $row;
+  }
+  
+  /**
+   * Retrieve several calendar objects by specifying an array of URIs.
+   * This is mainly neede for sync.
+   * 
+   * @param int $calid The calendar's ID
+   * @param array $uris An array of URIs
+   * 
+   * @return mixed The result
+   */
+  public function getMultipleCalendarObjectsByUri($calid, $uris)
+  {
+        $query = "SELECT id, uri, lastmodified, etag, calendarid, size, calendardata, componenttype FROM calendarobjects WHERE calendarid = ? AND uri IN (";
+        // Inserting a whole bunch of question marks
+        $query .= implode(',', array_fill(0, count($uris), '?'));
+        $query .= ')';
+        $vals = array_merge(array($calid), $uris);
+        
+        $res = $this->sqlite->query($query, $vals);
+        $arr = $this->sqlite->res2arr($res);
+        return $arr;
+  }
+  
+  /**
    * Retrieve all calendar events for a given calendar ID
    * 
    * @param string $calid The calendar's ID
@@ -985,6 +1167,25 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           }
       }
       return false;
+  }
+
+  /**
+   * Delete an event from a calendar by calendar ID and URI
+   * 
+   * @param int $calid The calendar's ID
+   * @param string $uri The object's URI
+   * 
+   * @return true
+   */
+  public function deleteCalendarEntryForCalendarByUri($calid, $uri)
+  {
+      $query = "DELETE FROM calendarobjects WHERE calendarid = ? AND uri = ?";
+      $res = $this->sqlite->query($query, $calid, $uri);
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'deleted');
+      }
+      return true;      
   }
 
   /**
@@ -1231,4 +1432,297 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return $this->getConf($key);
   }
   
+  /**
+   * Parses some information from calendar objects, used for optimized
+   * calendar-queries. Taken nearly unmodified from Sabre's PDO backend
+   *
+   * Returns an array with the following keys:
+   *   * etag - An md5 checksum of the object without the quotes.
+   *   * size - Size of the object in bytes
+   *   * componentType - VEVENT, VTODO or VJOURNAL
+   *   * firstOccurence
+   *   * lastOccurence
+   *   * uid - value of the UID property
+   *
+   * @param string $calendarData
+   * @return array
+   */
+  protected function getDenormalizedData($calendarData) 
+  {
+    require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+    
+    $vObject = \Sabre\VObject\Reader::read($calendarData);
+    $componentType = null;
+    $component = null;
+    $firstOccurence = null;
+    $lastOccurence = null;
+    $uid = null;
+    foreach ($vObject->getComponents() as $component) 
+    {
+        if ($component->name !== 'VTIMEZONE') 
+        {
+            $componentType = $component->name;
+            $uid = (string)$component->UID;
+            break;
+        }
+    }
+    if (!$componentType) 
+    {
+        return false;
+    }
+    if ($componentType === 'VEVENT') 
+    {
+        $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
+        // Finding the last occurence is a bit harder
+        if (!isset($component->RRULE)) 
+        {
+            if (isset($component->DTEND)) 
+            {
+                $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
+            }
+            elseif (isset($component->DURATION)) 
+            {
+                $endDate = clone $component->DTSTART->getDateTime();
+                $endDate->add(\Sabre\VObject\DateTimeParser::parse($component->DURATION->getValue()));
+                $lastOccurence = $endDate->getTimeStamp();
+            } 
+            elseif (!$component->DTSTART->hasTime()) 
+            {
+                $endDate = clone $component->DTSTART->getDateTime();
+                $endDate->modify('+1 day');
+                $lastOccurence = $endDate->getTimeStamp();
+            } 
+            else 
+            {
+                $lastOccurence = $firstOccurence;
+            }
+        } 
+        else 
+        {
+            $it = new \Sabre\VObject\Recur\EventIterator($vObject, (string)$component->UID);
+            $maxDate = new \DateTime('2038-01-01');
+            if ($it->isInfinite()) 
+            {
+                $lastOccurence = $maxDate->getTimeStamp();
+            } 
+            else 
+            {
+                $end = $it->getDtEnd();
+                while ($it->valid() && $end < $maxDate) 
+                {
+                    $end = $it->getDtEnd();
+                    $it->next();
+                }
+                $lastOccurence = $end->getTimeStamp();
+            }
+        }
+    }
+
+    return array(
+        'etag'           => md5($calendarData),
+        'size'           => strlen($calendarData),
+        'componentType'  => $componentType,
+        'firstOccurence' => $firstOccurence,
+        'lastOccurence'  => $lastOccurence,
+        'uid'            => $uid,
+    );
+
+  }
+
+  /**
+   * Query a calendar by ID and taking several filters into account.
+   * This is heavily based on Sabre's PDO backend.
+   * 
+   * @param int $calendarId The calendar's ID
+   * @param array $filters The filter array to apply
+   * 
+   * @return mixed The result
+   */
+  public function calendarQuery($calendarId, $filters)
+  {
+    $componentType = null;
+    $requirePostFilter = true;
+    $timeRange = null;
+
+    // if no filters were specified, we don't need to filter after a query
+    if (!$filters['prop-filters'] && !$filters['comp-filters']) 
+    {
+        $requirePostFilter = false;
+    }
+
+    // Figuring out if there's a component filter
+    if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined']) 
+    {
+        $componentType = $filters['comp-filters'][0]['name'];
+
+        // Checking if we need post-filters
+        if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters']) 
+        {
+            $requirePostFilter = false;
+        }
+        // There was a time-range filter
+        if ($componentType == 'VEVENT' && isset($filters['comp-filters'][0]['time-range'])) 
+        {
+            $timeRange = $filters['comp-filters'][0]['time-range'];
+
+            // If start time OR the end time is not specified, we can do a
+            // 100% accurate mysql query.
+            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end'])) 
+            {
+                $requirePostFilter = false;
+            }
+        }
+
+    }
+
+    if ($requirePostFilter) 
+    {
+        $query = "SELECT uri, calendardata FROM calendarobjects WHERE calendarid = ?";
+    } 
+    else 
+    {
+        $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
+    }
+
+    $values = array(
+        $calendarId
+    );
+
+    if ($componentType) 
+    {
+        $query .= " AND componenttype = ?";
+        $values[] = $componentType;
+    }
+
+    if ($timeRange && $timeRange['start']) 
+    {
+        $query .= " AND lastoccurence > ?";
+        $values[] = $timeRange['start']->getTimeStamp();
+    }
+    if ($timeRange && $timeRange['end']) 
+    {
+        $query .= " AND firstoccurence < ?";
+        $values[] = $timeRange['end']->getTimeStamp();
+    }
+
+    $res = $this->sqlite->query($query, $values);
+    $arr = $this->sqlite->res2arr($res);
+
+    $result = array();
+    foreach($arr as $row)
+    {
+        if ($requirePostFilter) 
+        {
+            if (!$this->validateFilterForObject($row, $filters))
+            {
+                continue;
+            }
+        }
+        $result[] = $row['uri'];
+
+    }
+
+    return $result;
+  }
+  
+  /**
+   * This method validates if a filter (as passed to calendarQuery) matches
+   * the given object. Taken from Sabre's PDO backend
+   *
+   * @param array $object
+   * @param array $filters
+   * @return bool
+   */
+  protected function validateFilterForObject($object, $filters) 
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+      // Unfortunately, setting the 'calendardata' here is optional. If
+      // it was excluded, we actually need another call to get this as
+      // well.
+      if (!isset($object['calendardata'])) 
+      {
+          $object = $this->getCalendarObjectByUri($object['calendarid'], $object['uri']);
+      }
+      
+      $vObject = \Sabre\VObject\Reader::read($object['calendardata']);
+      $validator = new \Sabre\CalDAV\CalendarQueryValidator();
+      
+      return $validator->validate($vObject, $filters);
+
+  }
+  
+  /**
+   * Retrieve changes for a given calendar based on the given syncToken.
+   * 
+   * @param int $calid The calendar's ID
+   * @param int $syncToken The supplied sync token
+   * @param int $syncLevel The sync level
+   * @param int $limit The limit of changes
+   * 
+   * @return array The result
+   */
+  public function getChangesForCalendar($calid, $syncToken, $syncLevel, $limit = null)
+  {
+      // Current synctoken
+      $currentToken = $this->getSyncTokenForCalendar($calid);
+
+      if ($currentToken === false) return null;
+
+      $result = array(
+          'syncToken' => $currentToken,
+          'added'     => array(),
+          'modified'  => array(),
+          'deleted'   => array(),
+      );
+
+      if ($syncToken) 
+      {
+
+          $query = "SELECT uri, operation FROM calendarchanges WHERE synctoken >= ? AND synctoken < ? AND calendarid = ? ORDER BY synctoken";
+          if ($limit > 0) $query .= " LIMIT " . (int)$limit;
+
+          // Fetching all changes
+          $res = $this->sqlite->query($query, $syncToken, $currentToken, $calid);
+          if($res === false)
+              return null;
+
+          $arr = $this->sqlite->res2arr($res);
+          $changes = array();
+
+          // This loop ensures that any duplicates are overwritten, only the
+          // last change on a node is relevant.
+          foreach($arr as $row) 
+          {
+              $changes[$row['uri']] = $row['operation'];
+          }
+
+          foreach ($changes as $uri => $operation) 
+          {
+              switch ($operation) 
+              {
+                  case 1 :
+                      $result['added'][] = $uri;
+                      break;
+                  case 2 :
+                      $result['modified'][] = $uri;
+                      break;
+                  case 3 :
+                      $result['deleted'][] = $uri;
+                      break;
+              }
+
+          }
+      }
+      else 
+      {
+          // No synctoken supplied, this is the initial sync.
+          $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
+          $res = $this->sqlite->query($query);
+          $arr = $this->sqlite->res2arr($res);
+
+          $result['added'] = $arr;
+      }
+      return $result;
+  }
+
 }
