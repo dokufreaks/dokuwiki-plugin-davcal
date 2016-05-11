@@ -55,3 +55,7 @@
     border: 0;
     
 }
+
+#dokuwiki__pagetools {
+    z-index: 10;
+}
