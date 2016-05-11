@@ -53,7 +53,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
     /**
      * Handle the match
      */
-    function handle($match, $state, $pos, &$handler){
+    function handle($match, $state, $pos, Doku_Handler $handler){
         global $ID;
         $options = trim(substr($match,14,-2));
         $options = explode(',', $options);
@@ -128,7 +128,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
     /**
      * Create output
      */
-    function render($format, &$R, $data) {
+    function render($format, Doku_Renderer $R, $data) {
         if($format == 'metadata')
         {
             $R->meta['plugin_davcal']['table'] = true;
