@@ -151,6 +151,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                     continue;
                 $connectionId = str_replace('webdav://', '', $page);
                 $settings = $wdc->getConnection($connectionId);
+                if($settings === false)
+                    continue;
                 $name = $settings['displayname'];
                 $write = $settings['write'];
                 $calid = $connectionId;
