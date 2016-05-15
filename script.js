@@ -234,6 +234,13 @@ var dw_davcal__modals = {
        .dialog({
            autoOpen: false,
            draggable: true,
+           // fix for dragging: http://stackoverflow.com/questions/17247486/jquery-ui-dialog-dragging-issues
+           drag: function(event, ui) {
+               var fixPix = jQuery(document).scrollTop();
+               iObj = ui.position;
+               iObj.top = iObj.top - fixPix;
+               jQuery(this).closest(".ui-dialog").css("top", iObj.top + "px");
+           },
            title: LANG.plugins.davcal['settings'],
            resizable: true,         
            buttons: dialogButtons,
@@ -563,6 +570,13 @@ var dw_davcal__modals = {
        .dialog({
            autoOpen: false,
            draggable: true,
+           // fix for dragging: http://stackoverflow.com/questions/17247486/jquery-ui-dialog-dragging-issues
+           drag: function(event, ui) {
+               var fixPix = jQuery(document).scrollTop();
+               iObj = ui.position;
+               iObj.top = iObj.top - fixPix;
+               jQuery(this).closest(".ui-dialog").css("top", iObj.top + "px");
+           },
            title: title,
            resizable: true,         
            buttons: dialogButtons,
@@ -770,6 +784,13 @@ var dw_davcal__modals = {
             .dialog({
                 autoOpen: false,
                 draggable: true,
+                //fix for dragging: http://stackoverflow.com/questions/17247486/jquery-ui-dialog-dragging-issues
+                drag: function(event, ui) {
+                    var fixPix = jQuery(document).scrollTop();
+                    iObj = ui.position;
+                    iObj.top = iObj.top - fixPix;
+                    jQuery(this).closest(".ui-dialog").css("top", iObj.top + "px");
+                },
                 title: title,
                 resizable: true,
                 buttons: dialogButtons,
