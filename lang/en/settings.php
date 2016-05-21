@@ -12,3 +12,4 @@ $lang['timezone'] = 'Set the timezone of the calendar (e.g. "Europe/Vienna" or "
 $lang['workweek'] = 'Show only workweek';
 $lang['weeknumbers'] = 'Show week numbers';
 $lang['timeformat'] = 'Time format to use, lang means based on language';
+$lang['default_client_id'] = 'Default ID when specified as davcalclient, e.g. webdav://8';

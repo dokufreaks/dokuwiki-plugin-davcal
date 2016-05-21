@@ -765,7 +765,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           // Actually add the values to the database
           $calid = $this->getCalendarIdForPage($id);
           $uri = uniqid('dokuwiki-').'.ics';
-          $now = new DateTime();
+          $now = new \DateTime();
           
           $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, componenttype, firstoccurence, lastoccurence, size, etag, uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
           $res = $this->sqlite->query($query, $calid, $uri, $eventStr, $now->getTimestamp(), 'VEVENT',
