@@ -14,3 +14,4 @@ $meta['timezone']               = array('string');
 $meta['timeformat']             = array('multichoice', '_choices' => array('lang', '24h', '12h'));
 $meta['workweek']               = array('onoff');
 $meta['weeknumbers']            = array('onoff');
+$meta['default_client_id']      = array('string');

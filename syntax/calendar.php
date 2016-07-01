@@ -48,6 +48,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
      */
     function connectTo($mode) {
         $this->Lexer->addSpecialPattern('\{\{davcal>[^}]*\}\}',$mode,'plugin_davcal_calendar');
+        $this->Lexer->addSpecialPattern('\{\{davcalclient>[^}]*\}\}',$mode,'plugin_davcal_calendar');
     }
 
     /**
@@ -55,8 +56,6 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
      */
     function handle($match, $state, $pos, Doku_Handler $handler){
         global $ID;
-        $options = trim(substr($match,9,-2));
-        $options = explode(',', $options);
         $data = array('name' => $ID,
                       'description' => $this->getLang('created_by_davcal'),
                       'id' => array(),
@@ -64,8 +63,24 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                       'view' => 'month',
                       'forcetimezone' => 'no',
                       'forcetimeformat' => 'no'
-                      );
-        $lastid = $ID;
+                      );        
+        if(strpos($match, '{{davcalclient') === 0)
+        {
+            $options = trim(substr($match,15,-2));
+            $defaultId = $this->getConf('default_client_id');
+            if(isset($defaultId) && ($defaultId != ''))
+            {
+                $data['id'][$defaultId] = '#3a87ad';
+                $lastid = $defaultId;
+            }  
+        }
+        else
+        {
+            $options = trim(substr($match,9,-2));
+            $lastid = $ID;
+        }
+        $options = explode(',', $options);
+
         foreach($options as $option)
         {
             list($key, $val) = explode('=', $option);

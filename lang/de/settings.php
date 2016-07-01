@@ -13,3 +13,4 @@ $lang['timezone'] = 'Setze die Zeitzone des Kalenders (zB "Europe/Vienna" oder "
 $lang['workweek'] = 'Zeige nur die Arbeitswoche';
 $lang['weeknumbers'] = 'Zeige Wochennummern';
 $lang['timeformat'] = 'Zeitformat, \'lang\' bedeutet sprachbasiert';
+$lang['default_client_id'] = 'Standard-ID im Client-Modus ({{caldavclient>) verwenden, zB webdav://8';
