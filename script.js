@@ -649,6 +649,8 @@ var dw_davcal__modals = {
        {
            e.preventDefault();
            var url = jQuery('#dw_davcal__editevent_attachment').val();
+           if(url == '')
+             return false;
            jQuery('#dw_davcal__editevent_attachment').val('http://');
            var row = '<tr><td><a href="' + url + '" class="dw_davcal__editevent_attachment_link">' + url + '</a></td><td><a class="deleteLink" href="#">' + LANG.plugins.davcal['delete'] + '</a></td></tr>';
            jQuery('#dw_davcal__editevent_attachments > tbody:last').append(row);
