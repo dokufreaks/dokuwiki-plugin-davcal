@@ -1191,25 +1191,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
 
   /**
-   * Delete an event from a calendar by calendar ID and URI
-   * 
-   * @param int $calid The calendar's ID
-   * @param string $uri The object's URI
-   * 
-   * @return true
-   */
-  public function deleteCalendarEntryForCalendarByUri($calid, $uri)
-  {
-      $query = "DELETE FROM calendarobjects WHERE calendarid = ? AND uri = ?";
-      $res = $this->sqlite->query($query, $calid, $uri);
-      if($res !== false)
-      {
-          $this->updateSyncTokenLog($calid, $uri, 'deleted');
-      }
-      return true;      
-  }
-
-  /**
    * Delete a calendar entry for a given page. Actually, the event is removed
    * based on the entry's UID, so that page ID is no used.
    * 
