@@ -37,8 +37,7 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       else
         $user = null;
       $write = false;
-      $multi = false;
-      
+         
       if(!checkSecurityToken())
       {
           echo "CSRF Attack.";
@@ -52,7 +51,8 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       
       // Check if we have access to the calendar ($id is given by parameters,
       // that's not necessarily the page we come from)
-      $acl = auth_quickaclcheck($id);
+      
+      $acl = $this->hlp->checkCalendarPermission($id);
       if($acl > AUTH_READ)
       {
           $write = true;
@@ -71,8 +71,6 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
       {
           $calendarPages = array($page => null);
       }
-      if(count($calendarPages) > 1)
-        $multi = true;
       
       // Parse the requested action
       switch($action)
@@ -159,7 +157,6 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'getSettings':
               $data['result'] = true;
               $data['settings'] = $this->hlp->getPersonalSettings($user);
-              $data['settings']['multi'] = $multi;
               $data['settings']['calids'] = $this->hlp->getCalendarMapForIDs($calendarPages);
               $data['settings']['readonly'] = !$write;
               $data['settings']['syncurl'] = $this->hlp->getSyncUrlForPage($page, $user);

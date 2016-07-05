@@ -379,7 +379,24 @@ var dw_davcal__modals = {
         if(dw_davcal__modals.$editEventDialog)
             return;
         
-        var readonly = dw_davcal__modals.settings['readonly'];
+        var readonly = true;
+        for(var i=0; i<dw_davcal__modals.settings['calids'].length; i++)
+        {
+            if(edit)
+            {
+                // Use the specific calendar setting if we edit an event
+                if(event.page == dw_davcal__modals.settings['calids'][i]['page'])
+                  readonly = !dw_davcal__modals.settings['calids'][i]['write'];
+            }
+            else
+            {
+                // If there is at least one writable calendar,
+                // we set readonly to false
+                if(dw_davcal__modals.settings['calids'][i]['write'])
+                  readonly = false;
+            }
+        }
+
         var title = '';   
         var dialogButtons = {};
         var calEvent = [];
@@ -401,11 +418,8 @@ var dw_davcal__modals = {
                   return;
                 var postArray = { };
                 var attachArr = new Array();
-                var pageid = dw_davcal__modals.page;
-                if(dw_davcal__modals.settings['multi'])
-                {
-                    pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
-                }
+                var pageid = calEvent.page;
+
                 jQuery('.dw_davcal__editevent_attachment_link').each(function() {
                     var attachment = jQuery(this).attr('href');
                     if(attachment != undefined)
@@ -513,12 +527,7 @@ var dw_davcal__modals = {
                   return;
 
                 var postArray = { };
-                var pageid = dw_davcal__modals.page;
-                var attachArr = new Array();
-                if(dw_davcal__modals.settings['multi'])
-                {
-                    pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
-                }
+                var pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
                 jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
                   {
@@ -746,11 +755,7 @@ var dw_davcal__modals = {
         if(confirm)
         {
             title = LANG.plugins.davcal['confirmation'];
-            var pageid = dw_davcal__modals.page;
-            if(dw_davcal__modals.settings['multi'])
-            {
-                pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
-            }
+            var pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
             dialogButtons[LANG.plugins.davcal['yes']] =  function() {
                             jQuery.post(
                                 DOKU_BASE + 'lib/exe/ajax.php',

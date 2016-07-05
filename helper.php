@@ -80,6 +80,38 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   }
   
   /**
+   * Check the permission of a user for a given calendar ID
+   * 
+   * @param string $id The calendar ID to check
+   * @return int AUTH_* constants
+   */
+  public function checkCalendarPermission($id)
+  {
+      if(strpos($page, 'webdav://') === 0)
+      {
+          $wdc =& plugin_load('helper', 'webdavclient');
+          if(is_null($wdc))
+            return AUTH_NONE;
+          $connectionId = str_replace('webdav://', '', $page);
+          $settings = $wdc->getConnection($connectionId);
+          if($settings === false)
+            return AUTH_NONE;
+          if($settings['write'] === '1')
+            return AUTH_CREATE;
+          return AUTH_READ;
+      }
+      else
+      {
+          $calid = $this->getCalendarIdForPage($id);
+          // We return AUTH_READ if the calendar does not exist. This makes
+          // davcal happy when there are just included calendars
+          if($calid === false)
+            return AUTH_READ;
+          return auth_quickaclcheck($id);
+      }
+  }
+  
+  /**
    * Filter calendar pages and return only those where the current
    * user has at least read permission.
    * 
@@ -154,7 +186,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                 if($settings === false)
                     continue;
                 $name = $settings['displayname'];
-                $write = $settings['write'];
+                $write = ($settings['write'] === '1');
                 $calid = $connectionId;
             }
             else
