@@ -527,6 +527,7 @@ var dw_davcal__modals = {
                   return;
 
                 var postArray = { };
+                var attachArr = new Array();
                 var pageid = jQuery("#dw_davcal__editevent_calendar option:selected").val();
                 jQuery("input.dw_davcal__editevent, textarea.dw_davcal__editevent").each(function() {
                   if(jQuery(this).attr('type') == 'checkbox')
