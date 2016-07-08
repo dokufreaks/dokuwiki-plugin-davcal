@@ -70,7 +70,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
             $defaultId = $this->getConf('default_client_id');
             if(isset($defaultId) && ($defaultId != ''))
             {
-                $data['id'][$defaultId] = '#3a87ad';
+                $data['id'][$defaultId] = null;
                 $lastid = $defaultId;
             }  
         }
@@ -91,7 +91,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                 case 'id':
                     $lastid = $val;
                     if(!in_array($val, $data['id']))
-                        $data['id'][$val] = '#3a87ad';
+                        $data['id'][$val] = null;
                 break;
                 case 'color':
                     $data['id'][$lastid] = $val;
@@ -123,8 +123,31 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
         // Handle the default case when the user didn't enter a different ID
         if(empty($data['id']))
         {
-            $data['id'] = array($ID => '#3a87ad');
+            $data['id'] = array($ID => null);
         }
+
+        // Fix up the colors, if no color information is given
+        foreach($data['id'] as $id => $color)
+        {
+            if(is_null($color))
+            {
+                // If this is the current calendar or a WebDAV calendar, use the
+                // default color
+                if(($id === $ID) || (strpos($id, 'webdav://') === 0))
+                {
+                    $data['id'][$id] = '#3a87ad';
+                }
+                // Otherwise, retrieve the color information from the calendar settings
+                else
+                {
+                    $calid = $this->hlp->getCalendarIdForPage($ID);
+                    $settings = $this->hlp->getCalendarSettings($calid);
+                    $color = $settings['calendarcolor'];
+                    $data['id'][$id] = $color;
+                }
+            }
+        }
+
         // Only update the calendar name/description if the ID matches the page ID.
         // Otherwise, the calendar is included in another page and we don't want
         // to interfere with its data.

@@ -188,6 +188,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                 $name = $settings['displayname'];
                 $write = ($settings['write'] === '1');
                 $calid = $connectionId;
+                $color = '#3a87ad';
             }
             else
             {
@@ -196,7 +197,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                 {
                     $settings = $this->getCalendarSettings($calid);
                     $name = $settings['displayname'];
-                    //$color = $settings['calendarcolor'];
+                    $color = $settings['calendarcolor'];
                     $write = (auth_quickaclcheck($page) > AUTH_READ);
                 }
                 else
