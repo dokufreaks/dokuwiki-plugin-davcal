@@ -13,11 +13,8 @@ class DokuWikiSabreAuthBackend extends Sabre\DAV\Auth\Backend\AbstractBasic
         global $auth;
         global $conf;
         $ret = $auth->checkPass($username, $password);
-        if($conf['allowdebug'])
-        {
-            dbglog('---- DAVCAL authBackendDokuwiki.php init');
-            dbglog('checkPass called for username '.$username.' with result '.$ret);
-        }
+        dbglog('---- DAVCAL authBackendDokuwiki.php init');
+        dbglog('checkPass called for username '.$username.' with result '.$ret);
         return $ret;
     }
 }

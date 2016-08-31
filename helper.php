@@ -19,20 +19,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   public function helper_plugin_davcal() {
     $this->sqlite =& plugin_load('helper', 'sqlite');
     global $conf;
-    if($conf['allowdebug'])
-        dbglog('---- DAVCAL helper.php init');
+    dbglog('---- DAVCAL helper.php init');
     if(!$this->sqlite)
     {
-        if($conf['allowdebug'])
-            dbglog('This plugin requires the sqlite plugin. Please install it.');
+        dbglog('This plugin requires the sqlite plugin. Please install it.');
         msg('This plugin requires the sqlite plugin. Please install it.');
         return;
     }
     
     if(!$this->sqlite->init('davcal', DOKU_PLUGIN.'davcal/db/'))
     {
-        if($conf['allowdebug'])
-            dbglog('Error initialising the SQLite DB for DAVCal');
+        dbglog('Error initialising the SQLite DB for DAVCal');
         return;
     }
   }
@@ -1575,6 +1572,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function calendarQuery($calendarId, $filters)
   {
+    dbglog('davcal::helper::calendarQuery');
     $componentType = null;
     $requirePostFilter = true;
     $timeRange = null;
@@ -1640,14 +1638,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $values[] = $timeRange['end']->getTimeStamp();
     }
 
+    dbglog($query);
     $res = $this->sqlite->query($query, $values);
     $arr = $this->sqlite->res2arr($res);
+    dbglog($arr);
 
     $result = array();
     foreach($arr as $row)
     {
         if ($requirePostFilter) 
         {
+            dbglog('requirePostFilter for');
+            dbglog($row);
+            dbglog($filters);
             if (!$this->validateFilterForObject($row, $filters))
             {
                 continue;
@@ -1676,13 +1679,18 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       // well.
       if (!isset($object['calendardata'])) 
       {
+          dbglog('fetching object...');
           $object = $this->getCalendarObjectByUri($object['calendarid'], $object['uri']);
       }
       
+      dbglog('object to validate: ');
+      dbglog($object);
       $vObject = \Sabre\VObject\Reader::read($object['calendardata']);
       $validator = new \Sabre\CalDAV\CalendarQueryValidator();
       
-      return $validator->validate($vObject, $filters);
+      $res = $validator->validate($vObject, $filters);
+      dbglog($res);
+      return $res;
 
   }
   
