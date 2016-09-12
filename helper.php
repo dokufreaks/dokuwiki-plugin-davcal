@@ -735,6 +735,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if($description !== '')
         $event->add('DESCRIPTION', $description);
       
+      // Add a location if requested
+      $location = $params['eventlocation'];
+      if($location !== '')
+        $event->add('LOCATION', $location);
+      
       // Add attachments
       $attachments = $params['attachments'];
       if(!is_null($attachments))
@@ -984,6 +989,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $entry['attachments'][] = (string)$attachment;
       }
       $entry['title'] = (string)$event->summary;
+      $entry['location'] = (string)$event->location;
       $entry['id'] = $uid;
       $entry['page'] = $page;
       $entry['color'] = $color;
@@ -1131,18 +1137,22 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $vevent->summary = $params['eventname'];
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
       $description = $params['eventdescription'];
+      $location = $params['eventlocation'];
       
       // Remove existing timestamps to overwrite them
       $vevent->remove('DESCRIPTION');      
       $vevent->remove('DTSTAMP');
       $vevent->remove('LAST-MODIFIED');
       $vevent->remove('ATTACH');
+      $vevent->remove('LOCATION');
       
-      // Add new time stamps and description
+      // Add new time stamps, description and location
       $vevent->add('DTSTAMP', $dtStamp);
       $vevent->add('LAST-MODIFIED', $dtStamp);
       if($description !== '')
         $vevent->add('DESCRIPTION', $description);
+      if($location !== '')
+        $vevent->add('LOCATION', $location);
 
       // Add attachments
       $attachments = $params['attachments'];

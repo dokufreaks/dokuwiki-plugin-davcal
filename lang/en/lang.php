@@ -32,6 +32,7 @@ $lang['js']['delete'] = 'Delete';
 $lang['js']['edit_event'] = 'Edit Event';
 $lang['js']['allday'] = 'All Day Event';
 $lang['js']['title'] = 'Title';
+$lang['js']['location'] = 'Location';
 $lang['js']['from'] = 'From';
 $lang['js']['to'] = 'To';
 $lang['js']['yes'] = 'Yes';
