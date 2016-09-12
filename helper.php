@@ -913,7 +913,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       else
           $timezone = new \DateTimeZone('UTC');
       $data = array();
-      
+
       $query = "SELECT calendardata, componenttype, uid FROM calendarobjects WHERE calendarid = ?";
       $startTs = null;
       $endTs = null;
@@ -944,6 +944,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $calid = $this->getCalendarIdForPage($id);
           if(is_null($color))
             $color = $this->getCalendarColorForCalendar($calid);
+            
+          $enabled = $this->getCalendarStatus($calid);
+          if($enabled === false)
+            return $data;
     
           // Retrieve matching calendar objects
           $res = $this->sqlite->query($query, $calid);
@@ -1073,7 +1077,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   
   /**
    * Retrieve information of a calendar's object, not including the actual
-   * calendar data! This is mainly neede for the sync support.
+   * calendar data! This is mainly needed for the sync support.
    * 
    * @param int $calid The calendar ID
    * 
@@ -1134,6 +1138,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getAllCalendarEvents($calid)
   {
+      $enabled = $this->getCalendarStatus($calid);
+      if($enabled === false)
+        return false;
       $query = "SELECT calendardata, uid, componenttype, uri FROM calendarobjects WHERE calendarid = ?";
       $res = $this->sqlite->query($query, $calid);
       $arr = $this->sqlite->res2arr($res);
