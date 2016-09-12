@@ -117,6 +117,13 @@ jQuery(function() {
                         fcOptions.timeFormat = 'h:mmt';
                     }
                 }
+                for (var key in data['settings']['meta']['fcoptions'])
+                {
+                    if(!data['settings']['meta']['fcoptions'].hasOwnProperty(key)) continue;
+                    
+                    var val = data['settings']['meta']['fcoptions'][key];
+                    fcOptions[key] = val;
+                }
                 var detectedTz = jstz.determine().name();
                 dw_davcal__modals.detectedTz = detectedTz;
                 // The current TZ value holds either the uers's selection or

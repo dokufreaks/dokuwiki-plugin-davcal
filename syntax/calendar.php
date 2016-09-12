@@ -62,7 +62,8 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                       'settings' => 'show',
                       'view' => 'month',
                       'forcetimezone' => 'no',
-                      'forcetimeformat' => 'no'
+                      'forcetimeformat' => 'no',
+                      'fcoptions' => array(),
                       );        
         if(strpos($match, '{{davcalclient') === 0)
         {
@@ -101,6 +102,14 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                         $data['view'] = $val;
                     else
                         $data['view'] = 'month';
+                break;
+                case 'fcoptions':
+                    $fcoptions = explode(';', $val);
+                    foreach($fcoptions as $opt)
+                    {
+                        list($o, $v) = explode(':', $opt, 2);
+                        $data['fcoptions'][$o] = $v;
+                    }
                 break;
                 case 'forcetimezone':
                     $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);
