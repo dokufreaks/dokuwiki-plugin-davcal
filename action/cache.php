@@ -1,7 +1,7 @@
 <?php
 
 /**
- * DokuWiki DAVCal PlugIn - Ajax component
+ * DokuWiki DAVCal PlugIn - Cache component
  */
 
 if(!defined('DOKU_INC')) die();

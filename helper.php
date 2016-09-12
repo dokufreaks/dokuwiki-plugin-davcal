@@ -548,6 +548,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       foreach($mapping as $row)
       {
           $id = $row['calid'];
+          $enabled = $this->getCalendarStatus($id);
+          if($enabled == false)
+            continue;
           $page = $row['page'];
           $acl = auth_aclcheck($page, $user, $groups);
           if($acl >= AUTH_READ)
@@ -826,10 +829,65 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function getCalendarSettings($calid)
   {
-      $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken FROM calendars WHERE id= ? ";
+      $query = "SELECT id, principaluri, calendarcolor, displayname, uri, description, components, transparent, synctoken, disabled FROM calendars WHERE id= ? ";
       $res = $this->sqlite->query($query, $calid);
       $row = $this->sqlite->res2row($res);
       return $row;
+  }
+  
+  /**
+   * Retrieve the calendar status of a given calendar id
+   * 
+   * @param string $calid The calendar ID
+   * @return boolean True if calendar is enabled, otherwise false
+   */
+  public function getCalendarStatus($calid)
+  {
+      $query = "SELECT disabled FROM calendars WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid);
+      $row = $this->sqlite->res2row($res);
+      if($row['disabled'] == 1)
+        return false;
+      else
+        return true;
+  }
+  
+  /**
+   * Disable a calendar for a given page
+   * 
+   * @param string $id The page ID
+   * 
+   * @return boolean true on success, otherwise false
+   */
+  public function disableCalendarForPage($id)
+  {
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      $query = "UPDATE calendars SET disabled = 1 WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid);
+      if($res !== false)
+        return true;
+      return false;
+  }
+  
+  /**
+   * Enable a calendar for a given page
+   * 
+   * @param string $id The page ID
+   * 
+   * @return boolean true on success, otherwise false
+   */
+  public function enableCalendarForPage($id)
+  {
+      $calid = $this->getCalendarIdForPage($id);
+      if($calid === false)
+        return false;
+      $query = "UPDATE calendars SET disabled = 0 WHERE id = ?";
+      $res = $this->sqlite->query($query, $calid);
+      if($res !== false)
+        return true;
+      return false;
   }
 
   /**
@@ -1648,19 +1706,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $values[] = $timeRange['end']->getTimeStamp();
     }
 
-    dbglog($query);
     $res = $this->sqlite->query($query, $values);
     $arr = $this->sqlite->res2arr($res);
-    dbglog($arr);
 
     $result = array();
     foreach($arr as $row)
     {
         if ($requirePostFilter) 
         {
-            dbglog('requirePostFilter for');
-            dbglog($row);
-            dbglog($filters);
             if (!$this->validateFilterForObject($row, $filters))
             {
                 continue;
@@ -1689,17 +1742,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       // well.
       if (!isset($object['calendardata'])) 
       {
-          dbglog('fetching object...');
           $object = $this->getCalendarObjectByUri($object['calendarid'], $object['uri']);
       }
       
-      dbglog('object to validate: ');
-      dbglog($object);
       $vObject = \Sabre\VObject\Reader::read($object['calendardata']);
       $validator = new \Sabre\CalDAV\CalendarQueryValidator();
       
       $res = $validator->validate($vObject, $filters);
-      dbglog($res);
       return $res;
 
   }

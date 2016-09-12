@@ -168,6 +168,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                 $username = uniqid('davcal-');
             $this->hlp->setCalendarNameForPage($data['name'], $data['description'], $ID, $username);
             $this->hlp->setCalendarColorForPage($data['id'][$ID], $ID);
+            $this->hlp->enableCalendarForPage($ID);
         }
 
         p_set_metadata($ID, array('plugin_davcal' => $data));
