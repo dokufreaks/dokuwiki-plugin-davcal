@@ -98,7 +98,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                     $data['id'][$lastid] = $val;
                 break;
                 case 'view':
-                    if(in_array($val, array('month', 'basicDay', 'basicWeek', 'agendaWeek', 'agendaDay')))
+                    if(in_array($val, array('month', 'basicDay', 'basicWeek', 'agendaWeek', 'agendaDay', 'listWeek', 'listDay', 'listMonth', 'listYear')))
                         $data['view'] = $val;
                     else
                         $data['view'] = 'month';

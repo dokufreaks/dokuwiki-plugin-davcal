@@ -1,9 +1,9 @@
-/* DOKUWIKI:include_once fullcalendar-2.4.0/moment.js */
-/* DOKUWIKI:include_once fullcalendar-2.4.0/fullcalendar.js */
-/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/de.js */
-/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/en.js */
-/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/fr.js */
-/* DOKUWIKI:include_once fullcalendar-2.4.0/lang/nl.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/moment.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/fullcalendar.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/locale/de.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/locale/en.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/locale/fr.js */
+/* DOKUWIKI:include_once fullcalendar-3.2.0/locale/nl.js */
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
 /* DOKUWIKI:include_once jstz.js */
 
@@ -91,14 +91,14 @@ jQuery(function() {
                     header: {
                         left: 'title',
                         center: 'today prev,next',
-                        right: 'month,agendaWeek,agendaDay'
+                        right: 'month,agendaWeek,agendaDay,listWeek'
                     },
-                    lang: JSINFO.plugin.davcal['language'],
+                    locale: JSINFO.plugin.davcal['language'],
                     weekNumbers: (data['settings']['weeknumbers'] == 1) ? true : false,
                     timezone: tz,
                     weekends: (data['settings']['workweek'] == 1) ? false : true,
                     firstDay: (data['settings']['monday'] == 1) ? 1 : 0,
-                    defaultView: data['settings']['meta']['view']
+                    defaultView: data['settings']['meta']['view'],
                 };
                 var timeformat = data['settings']['timeformat'];
                 // Force-overwrite the user's timezone setting if requested by the calendar

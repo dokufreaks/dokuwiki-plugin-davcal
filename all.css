@@ -1,4 +1,4 @@
-@import "fullcalendar-2.4.0/fullcalendar.less";
+@import "fullcalendar-3.2.0/fullcalendar.less";
 @import "datetimepicker-2.4.5/jquery.datetimepicker.less";
 
 
@@ -39,4 +39,9 @@
 
 #dokuwiki__pagetools {
     z-index: 10;
+}
+
+/* fix scrollbar */
+#fullCalendar table {
+    margin: 0;
 }
