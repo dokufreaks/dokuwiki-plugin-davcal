@@ -94,12 +94,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function checkCalendarPermission($id)
   {
-      if(strpos($page, 'webdav://') === 0)
+      if(strpos($id, 'webdav://') === 0)
       {
           $wdc =& plugin_load('helper', 'webdavclient');
           if(is_null($wdc))
             return AUTH_NONE;
-          $connectionId = str_replace('webdav://', '', $page);
+          $connectionId = str_replace('webdav://', '', $id);
           $settings = $wdc->getConnection($connectionId);
           if($settings === false)
             return AUTH_NONE;
