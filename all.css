@@ -41,7 +41,3 @@
     z-index: 10;
 }
 
-/* fix scrollbar */
-#fullCalendar table {
-    margin: 0;
-}
