@@ -849,7 +849,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           // Actually add the values to the database
           $calid = $this->getCalendarIdForPage($id);
-          $uri = uniqid('dokuwiki-').'.ics';
+          $uri = $uri = 'dokuwiki-' . bin2hex(random_bytes(16)) . '.ics';
           $now = new \DateTime();
           
           $sqlite = $this->getDB();
@@ -1563,7 +1563,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $row = $sqlite->res2row($res);
       if(!isset($row['url']))
       {
-          $url = uniqid("dokuwiki-").".ics";
+          $url = 'dokuwiki-' . bin2hex(random_bytes(16)) . '.ics';
           $query = "INSERT INTO calendartoprivateurlmapping (url, calid) VALUES(?, ?)";
           $res = $sqlite->query($query, $url, $calid);
           if($res === false)
