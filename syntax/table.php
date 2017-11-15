@@ -216,19 +216,19 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         $R->table_open();
         $R->tablethead_open();
         $R->tableheader_open();
-        $R->doc .= $data['onlystart'] ? $this->getLang('at') : $this->getLang('from');
+        $R->doc .= $data['onlystart'] ? hsc($this->getLang('at')) : hsc($this->getLang('from'));
         $R->tableheader_close();
         if(!$data['onlystart'])
         {
             $R->tableheader_open();
-            $R->doc .= $this->getLang('to');
+            $R->doc .= hsc($this->getLang('to'));
             $R->tableheader_close();
         }
         $R->tableheader_open();
-        $R->doc .= $this->getLang('title');
+        $R->doc .= hsc($this->getLang('title'));
         $R->tableheader_close();
         $R->tableheader_open();
-        $R->doc .= $this->getLang('description');
+        $R->doc .= hsc($this->getLang('description'));
         $R->tableheader_close();
         $R->tablethead_close();
         foreach($events as $event)
@@ -262,10 +262,10 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 $R->tablecell_close();
             }
             $R->tablecell_open();
-            $R->doc .= $event['title'];
+            $R->doc .= hsc($event['title']);
             $R->tablecell_close();
             $R->tablecell_open();
-            $R->doc .= $event['description'];
+            $R->doc .= hsc($event['description']);
             $R->tablecell_close();
             $R->tablerow_close();
         }
