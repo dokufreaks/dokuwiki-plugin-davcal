@@ -705,21 +705,25 @@ var dw_davcal__modals = {
                                                       formatDate:'YYYY-MM-DD',
                                                       datepicker: true,
                                                       timepicker: false,
+                                                      lang: JSINFO.plugin.davcal['language'],
                                                       });
         jQuery('#dw_davcal__eventfromtime_edit').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
                                                       datepicker: false,
                                                       timepicker: true,
+                                                      lang: JSINFO.plugin.davcal['language'],
                                                       step: 15});
         jQuery('#dw_davcal__eventto_edit').datetimepicker({format:'YYYY-MM-DD',
                                                       formatDate:'YYYY-MM-DD',
                                                       datepicker: true,
                                                       timepicker: false,
+                                                      lang: JSINFO.plugin.davcal['language'],
                                                       });
         jQuery('#dw_davcal__eventtotime_edit').datetimepicker({format:'HH:mm',
                                                       formatTime:'HH:mm',
                                                       datepicker: false,
                                                       timepicker: true,
+                                                      lang: JSINFO.plugin.davcal['language'],
                                                       step:15});
         jQuery('#dw_davcal__allday_edit').change(function() {
             if(jQuery(this).is(":checked"))
