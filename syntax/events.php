@@ -1,6 +1,6 @@
 <?php
 /**
- * DokuWiki Plugin DAVCal (Table Syntax Component)
+ * DokuWiki Plugin DAVCal (Events Syntax Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Böhler <dev@aboehler.at>
@@ -12,12 +12,12 @@ if(!defined('DOKU_INC')) die();
 if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'syntax.php');
 
-class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
+class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
     
     protected $hlp = null;
     
     // Load the helper plugin
-    public function syntax_plugin_davcal_table() {  
+    public function syntax_plugin_davcal_events() {  
         $this->hlp =& plugin_load('helper', 'davcal');     
     }
     
@@ -47,7 +47,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
      * Connect pattern to lexer
      */
     function connectTo($mode) {
-        $this->Lexer->addSpecialPattern('\{\{davcaltable>[^}]*\}\}',$mode,'plugin_davcal_table');
+        $this->Lexer->addSpecialPattern('\{\{davcalevents>[^}]*\}\}',$mode,'plugin_davcal_events');
     }
 
     /**
@@ -55,9 +55,6 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
      */
     function handle($match, $state, $pos, Doku_Handler $handler){
         global $ID;
-        $options = trim(substr($match,14,-2));
-        $options = explode(',', $options);
-
         $data = array('id' => array(),
                       'startdate' => 'today',
                       'numdays' => 30,
@@ -66,8 +63,13 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                       'alldayformat' => 'Y-m-d',
                       'onlystart' => false,
                       'sort' => 'desc',
-                      'timezone' => 'local'
+                      'timezone' => 'local',
+                      'timeformat' => null,
                       );
+
+        $lastid = $ID;
+        $options = trim(substr($match,15,-2));
+        $options = explode(',', $options);
 
         foreach($options as $option)
         {
@@ -77,8 +79,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             switch($key)
             {
                 case 'id':
+                    $lastid = $val;
                     if(!in_array($val, $data['id']))
-                        $data['id'][$val] = '#3a87ad';
+                        $data['id'][$val] = null;
+                break;
+                case 'color':
+                    $data['id'][$lastid] = $val;
                 break;
                 case 'onlystart':
                     if(($val === 'on') || ($val === 'true'))
@@ -105,6 +111,28 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         {
             $data['id'] = array($ID => '#3a87ad');
         }
+        
+        // Fix up the colors, if no color information is given
+        foreach($data['id'] as $id => $color)
+        {
+            if(is_null($color))
+            {
+                // If this is the current calendar or a WebDAV calendar, use the
+                // default color
+                if(($id === $ID) || (strpos($id, 'webdav://') === 0))
+                {
+                    $data['id'][$id] = '#3a87ad';
+                }
+                // Otherwise, retrieve the color information from the calendar settings
+                else
+                {
+                    $calid = $this->hlp->getCalendarIdForPage($ID);
+                    $settings = $this->hlp->getCalendarSettings($calid);
+                    $color = $settings['calendarcolor'];
+                    $data['id'][$id] = $color;
+                }
+            }
+        }
 
         return $data;
     }
@@ -129,7 +157,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
     function render($format, Doku_Renderer $R, $data) {
         if($format == 'metadata')
         {
-            $R->meta['plugin_davcal']['table'] = true;
+            $R->meta['plugin_davcal']['events'] = true;
             return true;
         }
         if(($format != 'xhtml') && ($format != 'odt')) return false;
@@ -201,15 +229,53 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         foreach($userEvents as $calPage => $color)
         {
             $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage,
-                                      $user, $fromStr, $toStr, $timezone));
+                                      $user, $fromStr, $toStr, $timezone, null,
+                                      array('URL', 'X-COST')));
 
         }
         // Sort the events
         if($data['sort'] === 'desc')
-            usort($events, array("syntax_plugin_davcal_table", "sort_events_desc"));
+            usort($events, array("syntax_plugin_davcal_events", "sort_events_desc"));
         else
-            usort($events, array("syntax_plugin_davcal_table", "sort_events_asc"));
+            usort($events, array("syntax_plugin_davcal_events", "sort_events_asc"));
         
+        $R->doc .= '<div class="davcalevents">';
+        
+        
+        foreach($events as $event)
+        {
+            $from = new \DateTime($event['start']);
+
+            $color = $data['id'][$event['page']];
+            $R->doc .= '<div class="tile" style="background-color:'.$color.'">';
+            $R->doc .= '<div class="text">';
+            if($timezone !== 'local')
+            {
+                $from->setTimezone(new \DateTimeZone($timezone));
+                $to->setTimezone(new \DateTimeZone($timezone));
+            }
+            if($event['allDay'] === true)
+                $R->doc .= '<h1>'.$from->format($data['alldayformat']).'</h1>';
+            else
+                $R->doc .= '<h1>'.$from->format($data['dateformat']).'</h1>';
+            if(!is_null($data['timeformat']) && $event['allDay'] != true)
+            {
+                $R->doc .= '<h2>'.$from->format($data['timeformat']).'</h2>';
+            }
+            $R->doc .= $event['title'].'<br>';
+            $R->doc .= '<span class="costs">'.$this->getLang('costs').': '.$event['X-COST'].'</span>';
+            $R->doc .= '<div class="dots">';
+            $R->doc .= '<span></span>';
+            $R->doc .= '<span></span>';
+            $R->doc .= '<span></span>';
+            $R->doc .= '</div>';
+            $R->doc .= '</div>';
+            $R->doc .= '</div>';
+        }
+        
+        $R->doc .= '</div>';
+        
+        /*
         // Create tabular output
         $R->table_open();
         $R->tablethead_open();
@@ -268,6 +334,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $R->tablerow_close();
         }
         $R->table_close();
+        */
     }
 
 

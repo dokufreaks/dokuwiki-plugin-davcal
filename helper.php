@@ -966,10 +966,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param string $startDate The start date as a string
    * @param string $endDate The end date as a string
    * @param string $color (optional) The calendar's color
+   * @param array $additional (optional) Parse additional fields
    * 
    * @return array An array containing the calendar entries.
    */
-  public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone, $color = null)
+  public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone, $color = null, $additional = array())
   {
       if($timezone !== '' && $timezone !== 'local')
           $timezone = new \DateTimeZone($timezone);
@@ -1049,12 +1050,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       }
                       
                       // If we are within the given time range, parse the event
-                      $data[] = $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true);
+                      $data[] = $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true, $additional);
                       $rEvents->next();
                   }
               }
               else
-                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color);
+                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color, false, $additional);
           }
       }
       return $data;
@@ -1067,10 +1068,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param \DateTimeZone $timezone The timezone object
    * @param string $uid The entry's UID
    * @param boolean $recurring (optional) Set to true to define a recurring event
+   * @param array $additional (optional) Parse additional fields
    * 
    * @return array The parse calendar entry
    */
-  private function convertIcalDataToEntry($event, $page, $timezone, $uid, $color, $recurring = false)
+  private function convertIcalDataToEntry($event, $page, $timezone, $uid, $color, $recurring = false, $additional = array())
   {
       $entry = array();
       $start = $event->DTSTART;
@@ -1116,6 +1118,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $entry['attachments'] = array();
         foreach($attachments as $attachment)
           $entry['attachments'][] = (string)$attachment;
+      }
+      foreach($additional as $prop)
+      {
+          $entry[$prop] = (string)$event->{$prop};
       }
       $entry['title'] = (string)$event->summary;
       $entry['location'] = (string)$event->location;

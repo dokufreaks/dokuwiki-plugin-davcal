@@ -22,6 +22,7 @@ $lang['title'] = 'Title';
 $lang['error_timezone_not_in_list'] = 'The desired timezone is not supported by PHP!';
 $lang['error_option_error'] = 'You have an error in the option list';
 $lang['this_calendar_uses_timezone'] = 'This calendar is shown in the timezone %s.';
+$lang['costs'] = 'Costs';
 $lang['js']['create_new_event'] = 'Create new Event';
 $lang['js']['cancel'] = 'Cancel';
 $lang['js']['create'] = 'Create';
