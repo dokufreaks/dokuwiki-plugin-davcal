@@ -30,7 +30,8 @@ class action_plugin_davcal_cache extends DokuWiki_Action_Plugin {
       if(!$davcalMeta)
         return;
       
-      if(isset($davcalMeta['table']) && $davcalMeta['table'] === true)
+      if((isset($davcalMeta['table']) && $davcalMeta['table'] === true) ||
+         (isset($davcalMeta['events']) && $davcalMeta['events'] === true))
       {
             $event->preventDefault();
             $event->stopPropagation();

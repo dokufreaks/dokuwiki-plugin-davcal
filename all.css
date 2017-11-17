@@ -59,7 +59,6 @@
   display:inline-block;
   background-size:cover;
   position:relative;
-  cursor:pointer;
   transition: all 0.4s ease-out;
   box-shadow: 0px 35px 77px -17px rgba(0,0,0,0.44);
   overflow:hidden;
@@ -127,11 +126,21 @@ box-shadow: 0px 35px 77px -17px rgba(0,0,0,0.64);
   transform:translateX(0);
   opacity:1;
 }
+
+.davcalevents .more
+{
+  position:absolute;
+  bottom:20px;
+  right:20px;
+  margin: 0 auto;
+  color:currentColor;
+}
+
 .davcalevents .dots
 {
   position:absolute;
   bottom:20px;
-  right:30px;
+  right:0px;
   margin: 0 auto;
   width:30px;
   height:30px;
@@ -141,6 +150,20 @@ box-shadow: 0px 35px 77px -17px rgba(0,0,0,0.64);
   align-items:center;
   justify-content:space-around;
   
+}
+
+.davcalevents .more span
+{
+  transition: transform 0.4s ease-out, opacity 0.5s ease;
+  transform: translateY(30px);
+  opacity: 0;
+}
+
+.davcalevents .more a,
+.davcalevents .more a:hover,
+.davcalevents .more a:visited
+{
+    color: #ffffff;
 }
 
 .davcalevents .dots span

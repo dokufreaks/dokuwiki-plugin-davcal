@@ -225,13 +225,15 @@ class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
         // Filter events by user permissions
         $userEvents = $this->hlp->filterCalendarPagesByUserPermission($data['id']);
         
+        $perms = array();
         // Fetch the events
         foreach($userEvents as $calPage => $color)
         {
             $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage,
                                       $user, $fromStr, $toStr, $timezone, null,
                                       array('URL', 'X-COST')));
-
+            $perms[$calPage] = $this->hlp->checkCalendarPermission($calPage);
+            
         }
         // Sort the events
         if($data['sort'] === 'desc')
@@ -239,7 +241,16 @@ class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
         else
             usort($events, array("syntax_plugin_davcal_events", "sort_events_asc"));
         
-        $R->doc .= '<div class="davcalevents">';
+        $R->doc .= '<div class="davcalevents" data-calendarpage="'.$ID.'">';
+        
+        foreach($perms as $page => $perm)
+        {
+            if($perm > AUTH_READ)
+            {
+                $R->doc .= '<a href="#" class="davcalEventsAddNew">'.$this->getLang('add_new').'</a><br>';
+                break;
+            }
+        }
         
         
         foreach($events as $event)
@@ -262,79 +273,33 @@ class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
             {
                 $R->doc .= '<h2>'.$from->format($data['timeformat']).'</h2>';
             }
-            $R->doc .= $event['title'].'<br>';
-            $R->doc .= '<span class="costs">'.$this->getLang('costs').': '.$event['X-COST'].'</span>';
+            $R->doc .= hsc($event['title']).'<br>';
+            if(isset($event['X-COST']) && $event['X-COST'] !== '')
+            {
+                $R->doc .= '<span class="costs">'.$this->getLang('costs').': '.hsc($event['X-COST']).'</span>';
+            }
+            $R->doc .= '</div>';
             $R->doc .= '<div class="dots">';
             $R->doc .= '<span></span>';
             $R->doc .= '<span></span>';
             $R->doc .= '<span></span>';
             $R->doc .= '</div>';
-            $R->doc .= '</div>';
+            if(isset($event['URL']) && $event['URL'] !== '')
+            {
+                $R->doc .= '<div class="more">';
+                $R->doc .= '<span><a href="'.hsc($event['URL']).'" target="_blank">'.$this->getLang('more_info').'</a></span>';
+                $R->doc .= '</div>';
+            }
+            if(isset($perms[$event['page']]) && ($perms[$event['page']] > AUTH_READ))
+            {
+                $R->doc .= '<div class="edit">';
+                $R->doc .= '<span><a href="#" data-calendarid="'.$event['page'].'" data-uid="'.$event['uid'].'" class="davcalEventsEdit">'.$this->getLang('edit').'</a></span>';
+                $R->doc .= '</div>';
+            }
             $R->doc .= '</div>';
         }
         
         $R->doc .= '</div>';
-        
-        /*
-        // Create tabular output
-        $R->table_open();
-        $R->tablethead_open();
-        $R->tableheader_open();
-        $R->doc .= $data['onlystart'] ? $this->getLang('at') : $this->getLang('from');
-        $R->tableheader_close();
-        if(!$data['onlystart'])
-        {
-            $R->tableheader_open();
-            $R->doc .= $this->getLang('to');
-            $R->tableheader_close();
-        }
-        $R->tableheader_open();
-        $R->doc .= $this->getLang('title');
-        $R->tableheader_close();
-        $R->tableheader_open();
-        $R->doc .= $this->getLang('description');
-        $R->tableheader_close();
-        $R->tablethead_close();
-        foreach($events as $event)
-        {
-            $R->tablerow_open();
-            $R->tablecell_open();
-            $from = new \DateTime($event['start']);
-            if($timezone !== 'local')
-            {
-                $from->setTimezone(new \DateTimeZone($timezone));
-                $to->setTimezone(new \DateTimeZone($timezone));
-            }
-            if($event['allDay'] === true)
-                $R->doc .= $from->format($data['alldayformat']);
-            else
-                $R->doc .= $from->format($data['dateformat']);
-            $R->tablecell_close();
-            if(!$data['onlystart'])
-            {
-                $to = new \DateTime($event['end']);
-                // Fixup all day events, which have one day in excess
-                if($event['allDay'] === true)
-                {
-                    $to->sub(new \DateInterval('P1D'));
-                }
-                $R->tablecell_open();
-                if($event['allDay'] === true)
-                    $R->doc .= $to->format($data['alldayformat']);
-                else
-                    $R->doc .= $to->format($data['dateformat']);
-                $R->tablecell_close();
-            }
-            $R->tablecell_open();
-            $R->doc .= $event['title'];
-            $R->tablecell_close();
-            $R->tablecell_open();
-            $R->doc .= $event['description'];
-            $R->tablecell_close();
-            $R->tablerow_close();
-        }
-        $R->table_close();
-        */
     }
 
 
