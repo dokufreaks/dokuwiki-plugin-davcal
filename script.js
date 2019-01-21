@@ -22,24 +22,51 @@ jQuery(function() {
     };
     
     // Attach to event links
-    var calendarpage = jQuery('#fullCalendar').data('calendarpage');
-    if(!calendarpage) return;
-    dw_davcal__modals.page = calendarpage;
+    var calendarpage1 = jQuery('#fullCalendar').data('calendarpage');
+    if(calendarpage1)
+    {
+        dw_davcal__modals.page = calendarpage1;
+        
+        jQuery('div.fullCalendarSettings a').each(function() {
+            var $link = jQuery(this);
+            var href = $link.attr('href');
+            if (!href) return;
     
-    jQuery('div.fullCalendarSettings a').each(function() {
-        var $link = jQuery(this);
-        var href = $link.attr('href');
-        if (!href) return;
-
-        $link.click(
-            function(e) {
-                dw_davcal__modals.showSettingsDialog();
-                e.preventDefault();
-                return '';
+            $link.click(
+                function(e) {
+                    dw_davcal__modals.showSettingsDialog();
+                    e.preventDefault();
+                    return '';
+                }
+            );
             }
         );
+    }
+    
+    // Attach to event view links
+    var calendarpage2 = jQuery('div.davcalevents').data('calendarpage');
+    if(calendarpage2)
+    {
+        dw_davcal__modals.page = calendarpage2;
+        
+        jQuery('a.davcalEventsAddNew').each(function() {
+            var $link = jQuery(this);
+            var href = $link.attr('href');
+            if (!href) return;
+            
+            $link.click(
+                function(e) {
+                    dw_davcal__modals.showEditEventDialog(null, dw_davcal__modals.reasonParams.CreateEvent);
+                    e.preventDefault();
+                    return '';
+                }
+            );
         }
-    );
+        );
+    }
+    
+    if(!calendarpage1 && !calendarpage2)
+        return;
     
     // First, retrieve the current settings.
     // Upon success, initialize fullcalendar.
@@ -68,10 +95,10 @@ jQuery(function() {
                     tz = data['settings']['meta']['forcetimezone'];
                 var fcOptions = {
                     dayClick: function(date, jsEvent, view) {
-                        dw_davcal__modals.showEditEventDialog(date, false);
+                        dw_davcal__modals.showEditEventDialog(date, dw_davcal__modals.reasonParams.EditEntry);
                     },
                     eventClick: function(calEvent, jsEvent, view) {
-                        dw_davcal__modals.showEditEventDialog(calEvent, true);
+                        dw_davcal__modals.showEditEventDialog(calEvent, dw_davcal__modals.reasonParams.CreateEntry);
                     },
                     events: {
                         url: DOKU_BASE + 'lib/exe/ajax.php',
@@ -152,6 +179,12 @@ var dw_davcal__modals = {
     page: null,
     detectedTz: null,
     currentTz: null,
+    reasonParams : {
+        EditEntry : 0,
+        CreateEntry : 1,
+        EditEvent : 2,
+        CreateEvent : 3,
+    },
     
     /**
      * Show the settings dialog
@@ -380,16 +413,17 @@ var dw_davcal__modals = {
     /**
      * Show the edit event dialog, which is also used to create new events
      * @param {Object} event The event to create, that is the date or the calEvent
-     * @param {Object} edit  Whether we edit (true) or create a new event (false)
+     * @param {Object} reason The reason for calling the function
      */
-    showEditEventDialog : function(event, edit) {
+    showEditEventDialog : function(event, reason) {
         if(dw_davcal__modals.$editEventDialog)
             return;
         
         var readonly = true;
         for(var i=0; i<dw_davcal__modals.settings['calids'].length; i++)
         {
-            if(edit)
+            if(reason == dw_davcal__modals.reasonParams.EditEvent ||
+               reason == dw_davcal__modals.reasonParams.EditEntry)
             {
                 // Use the specific calendar setting if we edit an event
                 if(event.page == dw_davcal__modals.settings['calids'][i]['page'])
@@ -399,7 +433,7 @@ var dw_davcal__modals = {
             {
                 // If there is at least one writable calendar,
                 // we set readonly to false
-                if(dw_davcal__modals.settings['calids'][i]['write'])
+                if(dw_davcal__modals.settings['calids'][i]['write'] == true)
                   readonly = false;
             }
         }
@@ -408,6 +442,7 @@ var dw_davcal__modals = {
         var dialogButtons = {};
         var calEvent = [];
         var recurringWarning = '';
+        var action = '';
         // Buttons are dependent on edit or create
         // Several possibilities:
         //
@@ -416,8 +451,54 @@ var dw_davcal__modals = {
         // 3) Somebody tries to edit, it is readonly -> message
         // 4) Somebody tries to create and it is readonly -> message
         // 5) Somebody tries to create -> show
-        if(edit && (event.recurring != true) && (readonly === false))
+        // FIXME
+        switch(reason)
         {
+            case dw_davcal__modals.reasonParams.EditEntry:
+                if((event.recurring != true) && (readonly == false))
+                {
+                    action = 'editNotRecurringEntry';
+                }
+                else if((event.recurring == true) && (readonly == false))
+                {
+                    action = 'editRecurringEntry';
+                }
+                else
+                {
+                    action = 'editReadonlyEntry';
+                }
+            break;
+            case dw_davcal__modals.reasonParams.EditEvent:
+            
+            break;
+            case dw_davcal__modals.reasonParams.CreateEntry:
+                if(readonly == true)
+                {
+                    action = 'createReadonlyEntry';
+                }
+                else
+                {
+                    action = 'createEntry';
+                }
+            break;
+            case dw_davcal__modals.reasonParams.CreateEvent:
+                if(readonly == true)
+                {
+                    action = 'createReadonlyEvent';
+                }
+                else
+                {
+                    action = 'createEvent';
+                }
+            break;
+            default:
+            
+        }
+        alert(action);
+        switch(action)
+        {
+        case "editNotRecurringEntry":
+            
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
             dialogButtons[LANG.plugins.davcal['edit']] = function() {
@@ -484,21 +565,21 @@ var dw_davcal__modals = {
                 };
                 dw_davcal__modals.showDialog(true);
             };
-        }
-        else if(edit && (event.recurring == true) && (readonly === false))
-        {
+            break;
+        case "editRecurringEntry":
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
             recurringWarning = LANG.plugins.davcal['recurring_cant_edit'];
-        }
-        else if(edit && (readonly === true))
-        {
+            break;
+        case "editReadonlyEntry":
             calEvent = event;
             title = LANG.plugins.davcal['edit_event'];
             recurringWarning = LANG.plugins.davcal['no_permission'];
-        }
-        else if(readonly === true)
-        {
+            break;
+        case "createReadonlyEvent":
+            event = moment();
+            // There is intentionally no break!
+        case "createReadonlyEntry":
             calEvent.start = event;
             calEvent.end = moment(event);
             calEvent.start.hour(12);
@@ -514,9 +595,11 @@ var dw_davcal__modals = {
             calEvent.page = dw_davcal__modals.page;
             title = LANG.plugins.davcal['create_new_event'];
             recurringWarning = LANG.plugins.davcal['no_permission'];
-        }
-        else
-        {
+            break;
+        case "createEvent":
+            event = moment();
+            // There is intentionally no break!
+        case "createEntry":
             calEvent.start = event;
             calEvent.end = moment(event);
             calEvent.start.hour(12);
@@ -580,6 +663,9 @@ var dw_davcal__modals = {
                     }
                 );
             };
+            break;
+            default:
+            alert('unknown action');
         }
         dialogButtons[LANG.plugins.davcal['cancel']] = function() {
             dw_davcal__modals.hideEditEventDialog();
@@ -635,13 +721,16 @@ var dw_davcal__modals = {
        {
            var sel = '';
            // When creating an event, do not show read-only calendars
-           if(!edit && (dw_davcal__modals.settings['calids'][i]['write'] === false))
-             continue;
+           if((action == "createEvent" || action == "createEntry")
+               && (dw_davcal__modals.settings['calids'][i]['write'] == false))
+             continue; 
+           //if(!edit && (dw_davcal__modals.settings['calids'][i]['write'] === false))
+           //  continue;
            if(calEvent.page == dw_davcal__modals.settings['calids'][i]['page'])
              sel = ' selected="selected"';
            $dropdown.append('<option value="' + dw_davcal__modals.settings['calids'][i]['page'] + '"' + sel + '>' + dw_davcal__modals.settings['calids'][i]['name'] + '</option>');
        }
-       if(edit || (dw_davcal__modals.settings['calids'].length < 1))
+       if((action == "editEvent") || (action == "editEntry") || (dw_davcal__modals.settings['calids'].length < 1))
        {
            $dropdown.prop('disabled', true);
        }

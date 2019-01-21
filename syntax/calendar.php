@@ -171,7 +171,8 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
             $this->hlp->enableCalendarForPage($ID);
         }
 
-        p_set_metadata($ID, array('plugin_davcal' => $data));
+        // FIXME
+        //p_set_metadata($ID, array('plugin_davcal' => $data));
 
         return $data;
     }
@@ -180,6 +181,23 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
      * Create output
      */
     function render($format, Doku_Renderer $R, $data) {
+        if($format == 'metadata')
+        {
+            if(isset($R->persistent['plugin_davcal']))
+            {
+                unset($R->persistent['plugin_davcal']);
+                $R->meta['plugin_davcal'] = array();
+            }
+            
+            if(isset($R->meta['plugin_davcal']))
+            {
+                $R->meta['plugin_davcal'] = array_merge_recursive($R->meta['plugin_davcal'], $data);
+            }
+            else 
+            {
+                $R->meta['plugin_davcal'] = $data;
+            }
+        }
         if($format != 'xhtml') return false;
         global $ID;
         $tzlist = \DateTimeZone::listIdentifiers(DateTimeZone::ALL);

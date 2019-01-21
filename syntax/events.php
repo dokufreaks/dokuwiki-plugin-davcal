@@ -158,7 +158,7 @@ class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
         if($format == 'metadata')
         {
             $R->meta['plugin_davcal']['events'] = true;
-            return true;
+            $R->meta['plugin_davcal'] = array_merge_recursive($R->meta['plugin_davcal'], $data);
         }
         if(($format != 'xhtml') && ($format != 'odt')) return false;
         global $ID;
@@ -293,7 +293,7 @@ class syntax_plugin_davcal_events extends DokuWiki_Syntax_Plugin {
             if(isset($perms[$event['page']]) && ($perms[$event['page']] > AUTH_READ))
             {
                 $R->doc .= '<div class="edit">';
-                $R->doc .= '<span><a href="#" data-calendarid="'.$event['page'].'" data-uid="'.$event['uid'].'" class="davcalEventsEdit">'.$this->getLang('edit').'</a></span>';
+                $R->doc .= '<span><a href="#" data-calendarid="'.$event['page'].'" data-uid="'.$event['id'].'" class="davcalEventsEdit">'.$this->getLang('edit').'</a></span>';
                 $R->doc .= '</div>';
             }
             $R->doc .= '</div>';
