@@ -103,6 +103,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $settings = $wdc->getConnection($connectionId);
           if($settings === false)
             return AUTH_NONE;
+          // Check if webdavclient has permissions attached to a page
+          if(!empty($settings['permission']))
+          {
+            $perm = auth_quickaclcheck($settings['permission']);
+            // In case the page has more than read permission, but the
+            // calendar is read-only, we need to modify the permission here.
+            if($perm > AUTH_READ && $settings['write'] == 0)
+              $perm = AUTH_READ;
+            return $perm;
+          }
           if($settings['write'] === '1')
             return AUTH_CREATE;
           return AUTH_READ;
@@ -130,12 +140,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $retList = array();
       foreach($calendarPages as $page => $data)
       {
-          // WebDAV Connections are always readable
-          if(strpos($page, 'webdav://') === 0)
-          {
-              $retList[$page] = $data;
-          }
-          elseif(auth_quickaclcheck($page) >= AUTH_READ)
+          if($this->checkCalendarPermission($page) >= AUTH_READ)
           {
               $retList[$page] = $data;
           }
