@@ -65,6 +65,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                       'dateformat' => 'Y-m-d H:i',
                       'alldayformat' => 'Y-m-d',
                       'onlystart' => false,
+                      'location' => true,
                       'sort' => 'desc',
                       'timezone' => 'local'
                       );
@@ -94,6 +95,9 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                         $data['timezone'] = $val;
                     else
                         msg($this->getLang('error_timezone_not_in_list'), -1);
+                break;
+                case 'nolocation':
+                    $data['location'] = false;
                 break;
                 default:
                     $data[$key] = $val;
@@ -225,6 +229,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         $R->tableheader_open();
         $R->doc .= hsc($this->getLang('title'));
         $R->tableheader_close();
+        if($data['location'])
+        {
+            $R->tableheader_open();
+            $R->doc .= hsc($this->getLang('location'));
+            $R->tableheader_close();
+        }
         $R->tableheader_open();
         $R->doc .= hsc($this->getLang('description'));
         $R->tableheader_close();
@@ -262,6 +272,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
             $R->tablecell_open();
             $R->doc .= hsc($event['title']);
             $R->tablecell_close();
+            if($data['location'])
+            {
+                $R->tablecell_open();
+                $R->doc .= hsc($event['location']);
+                $R->tablecell_close();
+            }
             $R->tablecell_open();
             $R->doc .= hsc($event['description']);
             $R->tablecell_close();

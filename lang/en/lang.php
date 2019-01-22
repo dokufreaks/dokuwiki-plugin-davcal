@@ -26,6 +26,7 @@ $lang['costs'] = 'Costs';
 $lang['more_info'] = 'more...';
 $lang['edit'] = 'Edit';
 $lang['add_new'] = 'New Event';
+$lang['location'] = 'Location';
 $lang['js']['create_new_event'] = 'Create new Event';
 $lang['js']['cancel'] = 'Cancel';
 $lang['js']['create'] = 'Create';
