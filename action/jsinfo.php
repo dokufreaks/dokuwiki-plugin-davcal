@@ -33,6 +33,9 @@ class action_plugin_davcal_jsinfo extends DokuWiki_Action_Plugin {
         case 'fr':
             $lc = 'fr';
             break;
+        case 'ru':
+            $lc = 'ru';
+            break;
         default:
             $lc = 'en';
       }
