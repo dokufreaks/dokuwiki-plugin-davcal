@@ -1118,6 +1118,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         else
           $entry['end'] = $dtEnd->format(\DateTime::ATOM);
       }
+      $duration = $event->DURATION;
+      // Parse duration only if start is set, but end is missing
+      if($start !== null && $end == null && $duration !== null)
+      {
+          $interval = $duration->getDateInterval();
+          $dtStart = $start->getDateTime();
+          $dtStart->setTimezone($timezone);
+          $dtEnd = $dtStart->add($interval);
+          $dtEnd->setTimezone($timezone);
+          $entry['end'] = $dtEnd->format(\DateTime::ATOM);
+      }
       $description = $event->DESCRIPTION;
       if($description !== null)
         $entry['description'] = (string)$description;
