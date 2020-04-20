@@ -103,7 +103,8 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                     $data['location'] = false;
                 break;
                 case 'calname':
-                    $data['calname'] = true;
+                    if(($val === 'on') || ($val === 'true'))
+                        $data['calname'] = true;
                 break;
                 default:
                     $data[$key] = $val;
