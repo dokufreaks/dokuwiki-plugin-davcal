@@ -22,6 +22,7 @@ $lang['title'] = 'Titre';
 $lang['error_timezone_not_in_list'] = 'Le fuseau horaire souhaité n\'est pas pris en charge par PHP!';
 $lang['error_option_error'] = 'Vous avez une erreur dans la liste d\'options';
 $lang['this_calendar_uses_timezone'] = 'Ce calendrier utilise les fuseaux horaires %s.';
+$lang['calendar'] = 'Calendrier';
 $lang['js']['create_new_event'] = 'Créer un nouvel événement';
 $lang['js']['cancel'] = 'Annuler';
 $lang['js']['create'] = 'Créer';

@@ -19,6 +19,7 @@ $lang['to'] = 'Tot';
 $lang['at'] = 'Op';
 $lang['description'] = 'Omschrijving';
 $lang['title'] = 'Titel';
+$lang['calendar'] = 'Kalender';
 $lang['js']['create_new_event'] = 'Nieuwe Gebeurtenis';
 $lang['js']['cancel'] = 'Annuleer';
 $lang['js']['create'] = 'Nieuw';

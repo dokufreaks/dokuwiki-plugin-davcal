@@ -13,15 +13,15 @@ if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'syntax.php');
 
 class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
-    
+
     protected $hlp = null;
-    
+
     // Load the helper plugin
-    public function syntax_plugin_davcal_table() {  
-        $this->hlp =& plugin_load('helper', 'davcal');     
+    public function syntax_plugin_davcal_table() {
+        $this->hlp =& plugin_load('helper', 'davcal');
     }
-    
-    
+
+
     /**
      * What kind of syntax are we?
      */
@@ -66,6 +66,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                       'alldayformat' => 'Y-m-d',
                       'onlystart' => false,
                       'location' => true,
+                      'calname' => false,
                       'sort' => 'desc',
                       'timezone' => 'local'
                       );
@@ -101,6 +102,9 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 case 'nolocation':
                     $data['location'] = false;
                 break;
+                case 'calname':
+                    $data['calname'] = true;
+                break;
                 default:
                     $data[$key] = $val;
             }
@@ -121,14 +125,14 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         $from2 = new \DateTime($b['start']);
         return $from2 < $from1;
     }
-    
+
     private static function sort_events_desc($a, $b)
     {
         $from1 = new \DateTime($a['start']);
         $from2 = new \DateTime($b['start']);
         return $from1 < $from2;
     }
-    
+
     /**
      * Create output
      */
@@ -140,11 +144,11 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         }
         if(($format != 'xhtml') && ($format != 'odt')) return false;
         global $ID;
-                
+
         $events = array();
         $from = $data['startdate'];
         $toStr = null;
-        
+
         // Handle the various options to 'startDate'
         if($from === 'today')
         {
@@ -166,7 +170,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         {
             $from = new \DateTime($from);
         }
-        
+
         // Handle the option 'startisend'
         if($data['startisend'] === true)
         {
@@ -199,23 +203,23 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
 
         // Support for timezone
         $timezone = $data['timezone'];
-        
+
         // Filter events by user permissions
         $userEvents = $this->hlp->filterCalendarPagesByUserPermission($data['id']);
-        
+
         // Fetch the events
         foreach($userEvents as $calPage => $color)
         {
             $events = array_merge($events, $this->hlp->getEventsWithinDateRange($calPage,
                                       $user, $fromStr, $toStr, $timezone));
-
         }
+
         // Sort the events
         if($data['sort'] === 'desc')
             usort($events, array("syntax_plugin_davcal_table", "sort_events_desc"));
         else
             usort($events, array("syntax_plugin_davcal_table", "sort_events_asc"));
-        
+
         // Create tabular output
         $R->table_open();
         $R->tablethead_open();
@@ -235,6 +239,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
         {
             $R->tableheader_open();
             $R->doc .= hsc($this->getLang('location'));
+            $R->tableheader_close();
+        }
+        if($data['calname'])
+        {
+            $R->tableheader_open();
+            $R->doc .= hsc($this->getLang('calendar'));
             $R->tableheader_close();
         }
         $R->tableheader_open();
@@ -280,6 +290,12 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
                 $R->doc .= hsc($event['location']);
                 $R->tablecell_close();
             }
+			if($data['calname'])
+            {
+                $R->tablecell_open();
+                $R->doc .= hsc($event['calendarname']);
+                $R->tablecell_close();
+            }
             $R->tablecell_open();
             $R->doc .= hsc($event['description']);
             $R->tablecell_close();
@@ -289,7 +305,7 @@ class syntax_plugin_davcal_table extends DokuWiki_Syntax_Plugin {
     }
 
 
-   
+
 }
 
 // vim:ts=4:sw=4:et:enc=utf-8:

@@ -1,25 +1,25 @@
 <?php
-/** 
+/**
   * Helper Class for the DAVCal plugin
   * This helper does the actual work.
-  * 
+  *
   */
-  
+
 // must be run within Dokuwiki
 if(!defined('DOKU_INC')) die();
 
 class helper_plugin_davcal extends DokuWiki_Plugin {
-  
+
   protected $sqlite = null;
   protected $cachedValues = array();
-  
+
   /**
     * Constructor to load the configuration and the SQLite plugin
     */
   public function helper_plugin_davcal() {
     dbglog('---- DAVCAL helper.php init');
   }
-  
+
   /** Establish and initialize the database if not already done
    * @return sqlite interface or false
    */
@@ -43,10 +43,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return $this->sqlite;
   }
-  
+
   /**
    * Retrieve meta data for a given page
-   * 
+   *
    * @param string $id optional The page ID
    * @return array The metadata
    */
@@ -61,13 +61,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     } else {
         $meta = p_get_metadata($id);
     }
-    
+
     return $meta;
   }
-  
+
   /**
    * Retrieve the meta data for a given page
-   * 
+   *
    * @param string $id optional The page ID
    * @return array with meta data
    */
@@ -78,17 +78,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           global $ID;
           $id = $ID;
       }
-      
+
       $meta = $this->getMeta($id);
       if(isset($meta['plugin_davcal']))
         return $meta['plugin_davcal'];
       else
         return array();
   }
-  
+
   /**
    * Check the permission of a user for a given calendar ID
-   * 
+   *
    * @param string $id The calendar ID to check
    * @return int AUTH_* constants
    */
@@ -127,11 +127,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           return auth_quickaclcheck($id);
       }
   }
-  
+
   /**
    * Filter calendar pages and return only those where the current
    * user has at least read permission.
-   * 
+   *
    * @param array $calendarPages Array with calendar pages to check
    * @return array with filtered calendar pages
    */
@@ -147,11 +147,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return $retList;
   }
-  
+
   /**
    * Get all calendar pages used by a given page
    * based on the stored metadata
-   * 
+   *
    * @param string $id optional The page id
    * @return mixed The pages as array or false
    */
@@ -162,7 +162,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           global $ID;
           $id = $ID;
       }
-      
+
       $meta = $this->getCalendarMetaForPage($id);
 
       if(isset($meta['id']))
@@ -175,11 +175,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Get a list of calendar names/pages/ids/colors
    * for an array of page ids
-   * 
+   *
    * @param array $calendarPages The calendar pages to retrieve
    * @return array The list
    */
@@ -222,10 +222,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return $data;
   }
-  
+
   /**
    * Get the saved calendar color for a given page.
-   * 
+   *
    * @param string $id optional The page ID
    * @return mixed The color on success, otherwise false
    */
@@ -236,17 +236,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           global $ID;
           $id = $ID;
       }
-      
+
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return false;
-      
+
       return $this->getCalendarColorForCalendar($calid);
   }
-  
+
   /**
    * Get the saved calendar color for a given calendar ID.
-   * 
+   *
    * @param string $id optional The calendar ID
    * @return mixed The color on success, otherwise false
    */
@@ -259,12 +259,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       if(!isset($row['calendarcolor']))
         return false;
-      
+
       $color = $row['calendarcolor'];
       $this->cachedValues['calendarcolor'][$calid] = $color;
       return $color;
   }
-  
+
   /**
    * Get the user's principal URL for iOS sync
    * @param string $user the user name
@@ -277,10 +277,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $url = DOKU_URL.'lib/plugins/davcal/calendarserver.php/principals/'.$user;
       return $url;
   }
-  
+
   /**
    * Set the calendar color for a given page.
-   * 
+   *
    * @param string $color The color definition
    * @param string $id optional The page ID
    * @return boolean True on success, otherwise false
@@ -295,7 +295,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return false;
-      
+
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
@@ -309,17 +309,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Set the calendar name and description for a given page with a given
    * page id.
    * If the calendar doesn't exist, the calendar is created!
-   * 
+   *
    * @param string  $name The name of the new calendar
    * @param string  $description The description of the new calendar
    * @param string  $id (optional) The ID of the page
    * @param string  $userid The userid of the creating user
-   * 
+   *
    * @return boolean True on success, otherwise false.
    */
   public function setCalendarNameForPage($name, $description, $id = null, $userid = null)
@@ -343,7 +343,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return $this->createCalendarForPage($name, $description, $id, $userid);
-      
+
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
@@ -353,13 +353,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return true;
       return false;
   }
-  
+
   /**
    * Update a calendar's displayname
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $name The new calendar name
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function updateCalendarName($calid, $name)
@@ -376,13 +376,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Update the calendar description
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $description The new calendar's description
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function updateCalendarDescription($calid, $description)
@@ -399,13 +399,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Update a calendar's timezone information
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $timezone The new timezone to set
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function updateCalendarTimezone($calid, $timezone)
@@ -422,13 +422,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Save the personal settings to the SQLite database 'calendarsettings'.
-   * 
+   *
    * @param array  $settings The settings array to store
    * @param string $userid (optional) The userid to store
-   * 
+   *
    * @param boolean True on success, otherwise false
    */
   public function savePersonalSettings($settings, $userid = null)
@@ -439,7 +439,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           {
             $userid = $_SERVER['REMOTE_USER'];
           }
-          else 
+          else
           {
               return false;
           }
@@ -448,10 +448,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $sqlite->query("BEGIN TRANSACTION");
-      
+
       $query = "DELETE FROM calendarsettings WHERE userid = ?";
       $sqlite->query($query, $userid);
-      
+
       foreach($settings as $key => $value)
       {
           $query = "INSERT INTO calendarsettings (userid, key, value) VALUES (?, ?, ?)";
@@ -463,17 +463,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $this->cachedValues['settings'][$userid] = $settings;
       return true;
   }
-  
+
   /**
-   * Retrieve the settings array for a given user id. 
+   * Retrieve the settings array for a given user id.
    * Some sane defaults are returned, currently:
-   * 
+   *
    *    timezone    => local
    *    weeknumbers => 0
    *    workweek    => 0
-   * 
+   *
    * @param string $userid (optional) The user id to retrieve
-   * 
+   *
    * @return array The settings array
    */
   public function getPersonalSettings($userid = null)
@@ -492,7 +492,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           {
             $userid = $_SERVER['REMOTE_USER'];
           }
-          else 
+          else
           {
             return $settings;
           }
@@ -513,13 +513,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $this->cachedValues['settings'][$userid] = $settings;
       return $settings;
   }
-  
+
   /**
    * Retrieve the calendar ID based on a page ID from the SQLite table
-   * 'pagetocalendarmapping'. 
-   * 
+   * 'pagetocalendarmapping'.
+   *
    * @param string $id (optional) The page ID to retrieve the corresponding calendar
-   * 
+   *
    * @return mixed the ID on success, otherwise false
    */
   public function getCalendarIdForPage($id = null)
@@ -529,10 +529,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           global $ID;
           $id = $ID;
       }
-      
+
       if(isset($this->cachedValues['calid'][$id]))
         return $this->cachedValues['calid'][$id];
-      
+
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
@@ -547,12 +547,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
    * Retrieve the complete calendar id to page mapping.
    * This is necessary to be able to retrieve a list of
    * calendars for a given user and check the access rights.
-   * 
+   *
    * @return array The mapping array
    */
   public function getCalendarIdToPageMapping()
@@ -565,17 +565,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $arr = $sqlite->res2arr($res);
       return $arr;
   }
-  
+
   /**
    * Retrieve all calendar IDs a given user has access to.
    * The user is specified by the principalUri, so the
    * user name is actually split from the URI component.
-   * 
+   *
    * Access rights are checked against DokuWiki's ACL
    * and applied accordingly.
-   * 
+   *
    * @param string $principalUri The principal URI to work on
-   * 
+   *
    * @return array An associative array of calendar IDs
    */
   public function getCalendarIdsForUser($principalUri)
@@ -586,7 +586,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $mapping = $this->getCalendarIdToPageMapping();
       $calids = array();
       $ud = $auth->getUserData($user);
-      $groups = $ud['grps'];      
+      $groups = $ud['grps'];
       foreach($mapping as $row)
       {
           $id = $row['calid'];
@@ -603,16 +603,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return $calids;
   }
-  
+
   /**
    * Create a new calendar for a given page ID and set name and description
    * accordingly. Also update the pagetocalendarmapping table on success.
-   * 
+   *
    * @param string $name The calendar's name
    * @param string $description The calendar's description
    * @param string $id (optional) The page ID to work on
    * @param string $userid (optional) The user ID that created the calendar
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function createCalendarForPage($name, $description, $id = null, $userid = null)
@@ -633,9 +633,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $userid = uniqid('davcal-');
         }
       }
-      $values = array('principals/'.$userid, 
+      $values = array('principals/'.$userid,
                       $name,
-                      str_replace(array('/', ' ', ':'), '_', $id), 
+                      str_replace(array('/', ' ', ':'), '_', $id),
                       $description,
                       'VEVENT,VTODO',
                       0,
@@ -649,13 +649,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $res = $sqlite->query($query, $values[0], $values[1], $values[2], $values[3], $values[4], $values[5], $values[6]);
       if($res === false)
         return false;
-      
+
       // Get the new calendar ID
       $query = "SELECT id FROM calendars WHERE principaluri = ? AND displayname = ? AND ".
                "uri = ? AND description = ?";
       $res = $sqlite->query($query, $values[0], $values[1], $values[2], $values[3]);
       $row = $sqlite->res2row($res);
-      
+
       // Update the pagetocalendarmapping table with the new calendar ID
       if(isset($row['id']))
       {
@@ -663,20 +663,20 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $res = $sqlite->query($query, $id, $row['id']);
           return ($res !== false);
       }
-      
+
       return false;
   }
 
   /**
    * Add a new calendar entry to the given calendar. Calendar data is
    * specified as ICS file, thus it needs to be parsed first.
-   * 
+   *
    * This is mainly needed for the sync support.
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $uri The new object URI
    * @param string $ics The ICS file
-   * 
+   *
    * @return mixed The etag.
    */
   public function addCalendarEntryToCalendarByICS($calid, $uri, $ics)
@@ -687,7 +687,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     if(!$sqlite)
       return false;
     $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, etag, size, componenttype, firstoccurence, lastoccurence, uid) VALUES (?,?,?,?,?,?,?,?,?,?)";
-    $res = $sqlite->query($query, 
+    $res = $sqlite->query($query,
             $calid,
             $uri,
             $ics,
@@ -705,11 +705,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     }
     return $extraData['etag'];
   }
-  
+
   /**
    * Edit a calendar entry by providing a new ICS file. This is mainly
    * needed for the sync support.
-   * 
+   *
    * @param int $calid The calendar's IS
    * @param string $uri The object's URI to modify
    * @param string $ics The new object's ICS file
@@ -722,15 +722,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
       $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, etag = ?, size = ?, componenttype = ?, firstoccurence = ?, lastoccurence = ?, uid = ? WHERE calendarid = ? AND uri = ?";
-      $res = $sqlite->query($query, 
+      $res = $sqlite->query($query,
         $ics,
         time(),
         $extraData['etag'],
         $extraData['size'],
         $extraData['componentType'],
-        $extraData['firstOccurence'], 
-        $extraData['lastOccurence'], 
-        $extraData['uid'], 
+        $extraData['firstOccurence'],
+        $extraData['lastOccurence'],
+        $extraData['uid'],
         $calid,
         $uri
       );
@@ -743,7 +743,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   /**
    * Add a new iCal entry for a given page, i.e. a given calendar.
-   * 
+   *
    * The parameter array needs to contain
    *   detectedtz       => The timezone as detected by the browser
    *   currenttz        => The timezone in use by the calendar
@@ -753,11 +753,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    *   eventtotime      => The event's end time
    *   eventname        => The event's name
    *   eventdescription => The event's description
-   * 
+   *
    * @param string $id The page ID to work on
    * @param string $user The user who created the calendar
    * @param string $params A parameter array with values to create
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function addCalendarEntryToCalendarForPage($id, $user, $params)
@@ -768,80 +768,80 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
-      
+
       // Retrieve dates from settings
       $startDate = explode('-', $params['eventfrom']);
       $startTime = explode(':', $params['eventfromtime']);
       $endDate = explode('-', $params['eventto']);
       $endTime = explode(':', $params['eventtotime']);
-      
+
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $vcalendar = new \Sabre\VObject\Component\VCalendar();
-      
+
       // Add VCalendar, UID and Event Name
       $event = $vcalendar->add('VEVENT');
       $uuid = \Sabre\VObject\UUIDUtil::getUUID();
       $event->add('UID', $uuid);
       $event->summary = $params['eventname'];
-      
+
       // Add a description if requested
       $description = $params['eventdescription'];
       if($description !== '')
         $event->add('DESCRIPTION', $description);
-      
+
       // Add a location if requested
       $location = $params['eventlocation'];
       if($location !== '')
         $event->add('LOCATION', $location);
-      
+
       // Add attachments
       $attachments = $params['attachments'];
       if(!is_null($attachments))
         foreach($attachments as $attachment)
           $event->add('ATTACH', $attachment);
-      
+
       // Create a timestamp for last modified, created and dtstamp values in UTC
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
       $event->add('DTSTAMP', $dtStamp);
       $event->add('CREATED', $dtStamp);
       $event->add('LAST-MODIFIED', $dtStamp);
-      
+
       // Adjust the start date, based on the given timezone information
       $dtStart = new \DateTime();
-      $dtStart->setTimezone($timezone);            
+      $dtStart->setTimezone($timezone);
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
-      
+
       // Only add the time values if it's not an allday event
       if($params['allday'] != '1')
         $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
-      
+
       // Adjust the end date, based on the given timezone information
       $dtEnd = new \DateTime();
-      $dtEnd->setTimezone($timezone);      
+      $dtEnd->setTimezone($timezone);
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
-      
+
       // Only add the time values if it's not an allday event
       if($params['allday'] != '1')
         $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
-      
+
       // According to the VCal spec, we need to add a whole day here
       if($params['allday'] == '1')
           $dtEnd->add(new \DateInterval('P1D'));
-      
+
       // Really add Start and End events
       $dtStartEv = $event->add('DTSTART', $dtStart);
       $dtEndEv = $event->add('DTEND', $dtEnd);
-      
+
       // Adjust the DATE format for allday events
       if($params['allday'] == '1')
       {
           $dtStartEv['VALUE'] = 'DATE';
           $dtEndEv['VALUE'] = 'DATE';
       }
-      
+
       $eventStr = $vcalendar->serialize();
-      
+
       if(strpos($id, 'webdav://') === 0)
       {
           $wdc =& plugin_load('helper', 'webdavclient');
@@ -850,13 +850,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $connectionId = str_replace('webdav://', '', $id);
           return $wdc->addCalendarEntry($connectionId, $eventStr);
       }
-      else 
+      else
       {
           // Actually add the values to the database
           $calid = $this->getCalendarIdForPage($id);
           $uri = $uri = 'dokuwiki-' . bin2hex(random_bytes(16)) . '.ics';
           $now = new \DateTime();
-          
+
           $sqlite = $this->getDB();
           if(!$sqlite)
             return false;
@@ -864,7 +864,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $res = $sqlite->query($query, $calid, $uri, $eventStr, $now->getTimestamp(), 'VEVENT',
                                       $event->DTSTART->getDateTime()->getTimeStamp(), $event->DTEND->getDateTime()->getTimeStamp(),
                                       strlen($eventStr), md5($eventStr), $uuid);
-          
+
           // If successfully, update the sync token database
           if($res !== false)
           {
@@ -877,9 +877,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   /**
    * Retrieve the calendar settings of a given calendar id
-   * 
+   *
    * @param string $calid The calendar ID
-   * 
+   *
    * @return array The calendar settings array
    */
   public function getCalendarSettings($calid)
@@ -892,10 +892,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $row = $sqlite->res2row($res);
       return $row;
   }
-  
+
   /**
    * Retrieve the calendar status of a given calendar id
-   * 
+   *
    * @param string $calid The calendar ID
    * @return boolean True if calendar is enabled, otherwise false
    */
@@ -912,12 +912,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       else
         return true;
   }
-  
+
   /**
    * Disable a calendar for a given page
-   * 
+   *
    * @param string $id The page ID
-   * 
+   *
    * @return boolean true on success, otherwise false
    */
   public function disableCalendarForPage($id)
@@ -935,12 +935,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return true;
       return false;
   }
-  
+
   /**
    * Enable a calendar for a given page
-   * 
+   *
    * @param string $id The page ID
-   * 
+   *
    * @return boolean true on success, otherwise false
    */
   public function enableCalendarForPage($id)
@@ -961,17 +961,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   /**
    * Retrieve all events that are within a given date range,
    * based on the timezone setting.
-   * 
+   *
    * There is also support for retrieving recurring events,
    * using Sabre's VObject Iterator. Recurring events are represented
    * as individual calendar entries with the same UID.
-   * 
+   *
    * @param string $id The page ID to work with
    * @param string $user The user ID to work with
    * @param string $startDate The start date as a string
    * @param string $endDate The end date as a string
    * @param string $color (optional) The calendar's color
-   * 
+   *
    * @return array An array containing the calendar entries.
    */
   public function getEventsWithinDateRange($id, $user, $startDate, $endDate, $timezone, $color = null)
@@ -981,6 +981,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       else
           $timezone = new \DateTimeZone('UTC');
       $data = array();
+      $calname = 'unknown';
 
       $sqlite = $this->getDB();
       if(!$sqlite)
@@ -999,10 +1000,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $endTs = new \DateTime($endDate);
         $query .= " AND firstoccurence < ".$sqlite->quote_string($endTs->getTimestamp());
       }
-      
+
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
-      
+
       if(strpos($id, 'webdav://') === 0)
       {
           $wdc =& plugin_load('helper', 'webdavclient');
@@ -1010,22 +1011,27 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
             return $data;
           $connectionId = str_replace('webdav://', '', $id);
           $arr = $wdc->getCalendarEntries($connectionId, $startDate, $endDate);
+          $conn = $wdc->getConnection($connectionId);
+          $calname = $conn['displayname'];
       }
       else
       {
           $calid = $this->getCalendarIdForPage($id);
           if(is_null($color))
             $color = $this->getCalendarColorForCalendar($calid);
-            
+
           $enabled = $this->getCalendarStatus($calid);
           if($enabled === false)
             return $data;
-    
+
+          $settings = $this->getCalendarSettings($calid);
+          $calname = $settings['displayname'];
+
           // Retrieve matching calendar objects
           $res = $sqlite->query($query, $calid);
           $arr = $sqlite->res2arr($res);
       }
-      
+
       // Parse individual calendar entries
       foreach($arr as $row)
       {
@@ -1045,21 +1051,23 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       // If we are after the given time range, exit
                       if(($endTs !== null) && ($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()))
                           break;
-                        
+
                       // If we are before the given time range, continue
                       if(($startTs != null) && ($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp()))
                       {
                           $rEvents->next();
                           continue;
                       }
-                      
+
                       // If we are within the given time range, parse the event
-                      $data[] = $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true);
+                      $data[] = array_merge(array('calendarname' => $calname),
+                                            $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true));
                       $rEvents->next();
                   }
               }
               else
-                $data[] = $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color);
+                $data[] = array_merge(array('calendarname' => $calname),
+                                      $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color));
           }
       }
       return $data;
@@ -1067,12 +1075,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   /**
    * Helper function that parses the iCal data of a VEVENT to a calendar entry.
-   * 
+   *
    * @param \Sabre\VObject\VEvent $event The event to parse
    * @param \DateTimeZone $timezone The timezone object
    * @param string $uid The entry's UID
    * @param boolean $recurring (optional) Set to true to define a recurring event
-   * 
+   *
    * @return array The parse calendar entry
    */
   private function convertIcalDataToEntry($event, $page, $timezone, $uid, $color, $recurring = false)
@@ -1084,8 +1092,8 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
         $dtStart = $start->getDateTime();
         $dtStart->setTimezone($timezone);
-        
-        // moment.js doesn't like times be given even if 
+
+        // moment.js doesn't like times be given even if
         // allDay is set to true
         // This should fix T23
         if($start['VALUE'] == 'DATE')
@@ -1107,7 +1115,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $dtEnd->setTimezone($timezone);
         if($end['VALUE'] == 'DATE')
           $entry['end'] = $dtEnd->format("Y-m-d");
-        else 
+        else
           $entry['end'] = $dtEnd->format(\DateTime::ATOM);
       }
       $description = $event->DESCRIPTION;
@@ -1128,15 +1136,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $entry['page'] = $page;
       $entry['color'] = $color;
       $entry['recurring'] = $recurring;
-      
+
       return $entry;
   }
-  
+
   /**
    * Retrieve an event by its UID
-   * 
+   *
    * @param string $uid The event's UID
-   * 
+   *
    * @return mixed The table row with the given event
    */
   public function getEventWithUid($uid)
@@ -1149,13 +1157,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $row = $sqlite->res2row($res);
       return $row;
   }
-  
+
   /**
    * Retrieve information of a calendar's object, not including the actual
    * calendar data! This is mainly needed for the sync support.
-   * 
+   *
    * @param int $calid The calendar ID
-   * 
+   *
    * @return mixed The result
    */
   public function getCalendarObjects($calid)
@@ -1166,15 +1174,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $query = "SELECT id, uri, lastmodified, etag, calendarid, size, componenttype FROM calendarobjects WHERE calendarid = ?";
       $res = $sqlite->query($query, $calid);
       $arr = $sqlite->res2arr($res);
-      return $arr; 
+      return $arr;
   }
-  
+
   /**
    * Retrieve a single calendar object by calendar ID and URI
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $uri The object's URI
-   * 
+   *
    * @return mixed The result
    */
   public function getCalendarObjectByUri($calid, $uri)
@@ -1187,14 +1195,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $row = $sqlite->res2row($res);
       return $row;
   }
-  
+
   /**
    * Retrieve several calendar objects by specifying an array of URIs.
    * This is mainly neede for sync.
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param array $uris An array of URIs
-   * 
+   *
    * @return mixed The result
    */
   public function getMultipleCalendarObjectsByUri($calid, $uris)
@@ -1207,17 +1215,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $query .= implode(',', array_fill(0, count($uris), '?'));
       $query .= ')';
       $vals = array_merge(array($calid), $uris);
-        
+
       $res = $sqlite->query($query, $vals);
       $arr = $sqlite->res2arr($res);
       return $arr;
   }
-  
+
   /**
    * Retrieve all calendar events for a given calendar ID
-   * 
+   *
    * @param string $calid The calendar's ID
-   * 
+   *
    * @return array An array containing all calendar data
    */
   public function getAllCalendarEvents($calid)
@@ -1225,7 +1233,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $enabled = $this->getCalendarStatus($calid);
       if($enabled === false)
         return false;
-      
+
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
@@ -1234,15 +1242,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $arr = $sqlite->res2arr($res);
       return $arr;
   }
-  
+
   /**
    * Edit a calendar entry for a page, given by its parameters.
    * The params array has the same format as @see addCalendarEntryForPage
-   * 
+   *
    * @param string $id The page's ID to work on
    * @param string $user The user's ID to work on
    * @param array $params The parameter array for the edited calendar event
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   public function editCalendarEntryForPage($id, $user, $params)
@@ -1253,16 +1261,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone($params['detectedtz']);
       else
           $timezone = new \DateTimeZone('UTC');
-          
+
       // Parse dates
       $startDate = explode('-', $params['eventfrom']);
       $startTime = explode(':', $params['eventfromtime']);
       $endDate = explode('-', $params['eventto']);
       $endTime = explode(':', $params['eventtotime']);
-      
+
       // Retrieve the existing event based on the UID
       $uid = $params['uid'];
-      
+
       if(strpos($id, 'webdav://') === 0)
       {
         $wdc =& plugin_load('helper', 'webdavclient');
@@ -1274,31 +1282,31 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
         $event = $this->getEventWithUid($uid);
       }
-      
+
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       if(!isset($event['calendardata']))
         return false;
       $uri = $event['uri'];
       $calid = $event['calendarid'];
-      
+
       // Parse the existing event
       $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
       $vevent = $vcal->VEVENT;
-      
+
       // Set the new event values
       $vevent->summary = $params['eventname'];
       $dtStamp = new \DateTime(null, new \DateTimeZone('UTC'));
       $description = $params['eventdescription'];
       $location = $params['eventlocation'];
-      
+
       // Remove existing timestamps to overwrite them
-      $vevent->remove('DESCRIPTION');      
+      $vevent->remove('DESCRIPTION');
       $vevent->remove('DTSTAMP');
       $vevent->remove('LAST-MODIFIED');
       $vevent->remove('ATTACH');
       $vevent->remove('LOCATION');
-      
+
       // Add new time stamps, description and location
       $vevent->add('DTSTAMP', $dtStamp);
       $vevent->add('LAST-MODIFIED', $dtStamp);
@@ -1312,21 +1320,21 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!is_null($attachments))
         foreach($attachments as $attachment)
           $vevent->add('ATTACH', $attachment);
-      
-      // Setup DTSTART      
+
+      // Setup DTSTART
       $dtStart = new \DateTime();
-      $dtStart->setTimezone($timezone);      
+      $dtStart->setTimezone($timezone);
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
       if($params['allday'] != '1')
         $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
-      
+
       // Setup DTEND
       $dtEnd = new \DateTime();
-      $dtEnd->setTimezone($timezone);      
+      $dtEnd->setTimezone($timezone);
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
       if($params['allday'] != '1')
         $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
-      
+
       // According to the VCal spec, we need to add a whole day here
       if($params['allday'] == '1')
           $dtEnd->add(new \DateInterval('P1D'));
@@ -1334,7 +1342,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $vevent->remove('DTEND');
       $dtStartEv = $vevent->add('DTSTART', $dtStart);
       $dtEndEv = $vevent->add('DTEND', $dtEnd);
-      
+
       // Remove the time for allday events
       if($params['allday'] == '1')
       {
@@ -1369,10 +1377,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
   /**
    * Delete an event from a calendar by calendar ID and URI
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param string $uri The object's URI
-   * 
+   *
    * @return true
    */
   public function deleteCalendarEntryForCalendarByUri($calid, $uri)
@@ -1386,16 +1394,16 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           $this->updateSyncTokenLog($calid, $uri, 'deleted');
       }
-      return true;      
+      return true;
   }
 
   /**
    * Delete a calendar entry for a given page. Actually, the event is removed
    * based on the entry's UID, so that page ID is no used.
-   * 
+   *
    * @param string $id The page's ID (unused)
    * @param array $params The parameter array to work with
-   * 
+   *
    * @return boolean True
    */
   public function deleteCalendarEntryForPage($id, $params)
@@ -1424,12 +1432,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return true;
   }
-  
+
   /**
    * Retrieve the current sync token for a calendar
-   * 
+   *
    * @param string $calid The calendar id
-   * 
+   *
    * @return mixed The synctoken or false
    */
   public function getSyncTokenForCalendar($calid)
@@ -1439,13 +1447,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           return $row['synctoken'];
       return false;
   }
-  
+
   /**
-   * Helper function to convert the operation name to 
+   * Helper function to convert the operation name to
    * an operation code as stored in the database
-   * 
+   *
    * @param string $operationName The operation name
-   * 
+   *
    * @return mixed The operation code or false
    */
   public function operationNameToOperation($operationName)
@@ -1464,15 +1472,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       return false;
   }
-  
+
   /**
-   * Update the sync token log based on the calendar id and the 
+   * Update the sync token log based on the calendar id and the
    * operation that was performed.
-   * 
+   *
    * @param string $calid The calendar ID that was modified
    * @param string $uri The calendar URI that was modified
    * @param string $operation The operation that was performed
-   * 
+   *
    * @return boolean True on success, otherwise false
    */
   private function updateSyncTokenLog($calid, $uri, $operation)
@@ -1498,13 +1506,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $res = $sqlite->query($query, $currentToken, $calid);
       return ($res !== false);
   }
-  
+
   /**
    * Return the sync URL for a given Page, i.e. a calendar
-   * 
+   *
    * @param string $id The page's ID
    * @param string $user (optional) The user's ID
-   * 
+   *
    * @return mixed The sync url or false
    */
   public function getSyncUrlForPage($id, $user = null)
@@ -1520,24 +1528,24 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           return false;
         }
       }
-      
+
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return false;
-      
+
       $calsettings = $this->getCalendarSettings($calid);
       if(!isset($calsettings['uri']))
         return false;
-      
+
       $syncurl = DOKU_URL.'lib/plugins/davcal/calendarserver.php/calendars/'.$user.'/'.$calsettings['uri'];
-      return $syncurl; 
+      return $syncurl;
   }
-  
+
   /**
    * Return the private calendar's URL for a given page
-   * 
+   *
    * @param string $id the page ID
-   * 
+   *
    * @return mixed The private URL or false
    */
   public function getPrivateURLForPage($id)
@@ -1545,15 +1553,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $calid = $this->getCalendarIdForPage($id);
       if($calid === false)
         return false;
-      
+
       return $this->getPrivateURLForCalendar($calid);
   }
-  
+
   /**
    * Return the private calendar's URL for a given calendar ID
-   * 
+   *
    * @param string $calid The calendar's ID
-   * 
+   *
    * @return mixed The private URL or false
    */
   public function getPrivateURLForCalendar($calid)
@@ -1578,17 +1586,17 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       {
           $url = $row['url'];
       }
-      
+
       $url = DOKU_URL.'lib/plugins/davcal/ics.php/'.$url;
       $this->cachedValues['privateurl'][$calid] = $url;
       return $url;
   }
-  
+
   /**
    * Retrieve the calendar ID for a given private calendar URL
-   * 
+   *
    * @param string $url The private URL
-   * 
+   *
    * @return mixed The calendar ID or false
    */
   public function getCalendarForPrivateURL($url)
@@ -1603,12 +1611,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         return false;
       return $row['calid'];
   }
-  
+
   /**
    * Return a given calendar as ICS feed, i.e. all events in one ICS file.
-   * 
+   *
    * @param string $calid The calendar ID to retrieve
-   * 
+   *
    * @return mixed The calendar events as string or false
    */
   public function getCalendarAsICSFeed($calid)
@@ -1619,9 +1627,9 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $events = $this->getAllCalendarEvents($calid);
       if($events === false)
         return false;
-      
+
       // Load SabreDAV
-      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');      
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       $out = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//DAVCal//DAVCal for DokuWiki//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:";
       $out .= $calSettings['displayname']."\r\n";
       foreach($events as $event)
@@ -1633,10 +1641,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $out .= "END:VCALENDAR\r\n";
       return $out;
   }
-  
+
   /**
    * Retrieve a configuration option for the plugin
-   * 
+   *
    * @param string $key The key to query
    * @return mixed The option set, null if not found
    */
@@ -1644,7 +1652,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       return $this->getConf($key);
   }
-  
+
   /**
    * Parses some information from calendar objects, used for optimized
    * calendar-queries. Taken nearly unmodified from Sabre's PDO backend
@@ -1660,68 +1668,68 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param string $calendarData
    * @return array
    */
-  protected function getDenormalizedData($calendarData) 
+  protected function getDenormalizedData($calendarData)
   {
     require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
-    
+
     $vObject = \Sabre\VObject\Reader::read($calendarData);
     $componentType = null;
     $component = null;
     $firstOccurence = null;
     $lastOccurence = null;
     $uid = null;
-    foreach ($vObject->getComponents() as $component) 
+    foreach ($vObject->getComponents() as $component)
     {
-        if ($component->name !== 'VTIMEZONE') 
+        if ($component->name !== 'VTIMEZONE')
         {
             $componentType = $component->name;
             $uid = (string)$component->UID;
             break;
         }
     }
-    if (!$componentType) 
+    if (!$componentType)
     {
         return false;
     }
-    if ($componentType === 'VEVENT') 
+    if ($componentType === 'VEVENT')
     {
         $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
         // Finding the last occurence is a bit harder
-        if (!isset($component->RRULE)) 
+        if (!isset($component->RRULE))
         {
-            if (isset($component->DTEND)) 
+            if (isset($component->DTEND))
             {
                 $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
             }
-            elseif (isset($component->DURATION)) 
+            elseif (isset($component->DURATION))
             {
                 $endDate = clone $component->DTSTART->getDateTime();
                 $endDate->add(\Sabre\VObject\DateTimeParser::parse($component->DURATION->getValue()));
                 $lastOccurence = $endDate->getTimeStamp();
-            } 
-            elseif (!$component->DTSTART->hasTime()) 
+            }
+            elseif (!$component->DTSTART->hasTime())
             {
                 $endDate = clone $component->DTSTART->getDateTime();
                 $endDate->modify('+1 day');
                 $lastOccurence = $endDate->getTimeStamp();
-            } 
-            else 
+            }
+            else
             {
                 $lastOccurence = $firstOccurence;
             }
-        } 
-        else 
+        }
+        else
         {
             $it = new \Sabre\VObject\Recur\EventIterator($vObject, (string)$component->UID);
             $maxDate = new \DateTime('2038-01-01');
-            if ($it->isInfinite()) 
+            if ($it->isInfinite())
             {
                 $lastOccurence = $maxDate->getTimeStamp();
-            } 
-            else 
+            }
+            else
             {
                 $end = $it->getDtEnd();
-                while ($it->valid() && $end < $maxDate) 
+                while ($it->valid() && $end < $maxDate)
                 {
                     $end = $it->getDtEnd();
                     $it->next();
@@ -1745,10 +1753,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   /**
    * Query a calendar by ID and taking several filters into account.
    * This is heavily based on Sabre's PDO backend.
-   * 
+   *
    * @param int $calendarId The calendar's ID
    * @param array $filters The filter array to apply
-   * 
+   *
    * @return mixed The result
    */
   public function calendarQuery($calendarId, $filters)
@@ -1762,29 +1770,29 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return false;
 
     // if no filters were specified, we don't need to filter after a query
-    if (!$filters['prop-filters'] && !$filters['comp-filters']) 
+    if (!$filters['prop-filters'] && !$filters['comp-filters'])
     {
         $requirePostFilter = false;
     }
 
     // Figuring out if there's a component filter
-    if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined']) 
+    if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined'])
     {
         $componentType = $filters['comp-filters'][0]['name'];
 
         // Checking if we need post-filters
-        if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters']) 
+        if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters'])
         {
             $requirePostFilter = false;
         }
         // There was a time-range filter
-        if ($componentType == 'VEVENT' && isset($filters['comp-filters'][0]['time-range'])) 
+        if ($componentType == 'VEVENT' && isset($filters['comp-filters'][0]['time-range']))
         {
             $timeRange = $filters['comp-filters'][0]['time-range'];
 
             // If start time OR the end time is not specified, we can do a
             // 100% accurate mysql query.
-            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end'])) 
+            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end']))
             {
                 $requirePostFilter = false;
             }
@@ -1792,11 +1800,11 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
     }
 
-    if ($requirePostFilter) 
+    if ($requirePostFilter)
     {
         $query = "SELECT uri, calendardata FROM calendarobjects WHERE calendarid = ?";
-    } 
-    else 
+    }
+    else
     {
         $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
     }
@@ -1805,18 +1813,18 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
         $calendarId
     );
 
-    if ($componentType) 
+    if ($componentType)
     {
         $query .= " AND componenttype = ?";
         $values[] = $componentType;
     }
 
-    if ($timeRange && $timeRange['start']) 
+    if ($timeRange && $timeRange['start'])
     {
         $query .= " AND lastoccurence > ?";
         $values[] = $timeRange['start']->getTimeStamp();
     }
-    if ($timeRange && $timeRange['end']) 
+    if ($timeRange && $timeRange['end'])
     {
         $query .= " AND firstoccurence < ?";
         $values[] = $timeRange['end']->getTimeStamp();
@@ -1828,7 +1836,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
     $result = array();
     foreach($arr as $row)
     {
-        if ($requirePostFilter) 
+        if ($requirePostFilter)
         {
             if (!$this->validateFilterForObject($row, $filters))
             {
@@ -1841,7 +1849,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
     return $result;
   }
-  
+
   /**
    * This method validates if a filter (as passed to calendarQuery) matches
    * the given object. Taken from Sabre's PDO backend
@@ -1850,33 +1858,33 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * @param array $filters
    * @return bool
    */
-  protected function validateFilterForObject($object, $filters) 
+  protected function validateFilterForObject($object, $filters)
   {
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
       // Unfortunately, setting the 'calendardata' here is optional. If
       // it was excluded, we actually need another call to get this as
       // well.
-      if (!isset($object['calendardata'])) 
+      if (!isset($object['calendardata']))
       {
           $object = $this->getCalendarObjectByUri($object['calendarid'], $object['uri']);
       }
-      
+
       $vObject = \Sabre\VObject\Reader::read($object['calendardata']);
       $validator = new \Sabre\CalDAV\CalendarQueryValidator();
-      
+
       $res = $validator->validate($vObject, $filters);
       return $res;
 
   }
-  
+
   /**
    * Retrieve changes for a given calendar based on the given syncToken.
-   * 
+   *
    * @param int $calid The calendar's ID
    * @param int $syncToken The supplied sync token
    * @param int $syncLevel The sync level
    * @param int $limit The limit of changes
-   * 
+   *
    * @return array The result
    */
   public function getChangesForCalendar($calid, $syncToken, $syncLevel, $limit = null)
@@ -1896,7 +1904,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       if(!$sqlite)
         return false;
 
-      if ($syncToken) 
+      if ($syncToken)
       {
 
           $query = "SELECT uri, operation FROM calendarchanges WHERE synctoken >= ? AND synctoken < ? AND calendarid = ? ORDER BY synctoken";
@@ -1912,14 +1920,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
           // This loop ensures that any duplicates are overwritten, only the
           // last change on a node is relevant.
-          foreach($arr as $row) 
+          foreach($arr as $row)
           {
               $changes[$row['uri']] = $row['operation'];
           }
 
-          foreach ($changes as $uri => $operation) 
+          foreach ($changes as $uri => $operation)
           {
-              switch ($operation) 
+              switch ($operation)
               {
                   case 1 :
                       $result['added'][] = $uri;
@@ -1934,7 +1942,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
           }
       }
-      else 
+      else
       {
           // No synctoken supplied, this is the initial sync.
           $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";

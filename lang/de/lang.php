@@ -23,6 +23,7 @@ $lang['error_timezone_not_in_list'] = 'Die angegebene Zeitzone wird von PHP nich
 $lang['error_option_error'] = 'In den Optionen wurden ein Fehler festgestellt!';
 $lang['this_calendar_uses_timezone'] = 'Dieser Kalender wird in der Zeitzone %s angezeigt.';
 $lang['location'] = 'Ort';
+$lang['calendar'] = 'Kalender';
 $lang['js']['create_new_event'] = 'Neuen Eintrag anlegen';
 $lang['js']['cancel'] = 'Abbrechen';
 $lang['js']['create'] = 'Anlegen';
