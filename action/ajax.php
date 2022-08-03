@@ -4,8 +4,6 @@
  * DokuWiki DAVCal PlugIn - Ajax component
  */
 
-if(!defined('DOKU_INC')) die();
-
 class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
 
     /**
@@ -187,13 +185,9 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
     
       // If we are still here, JSON output is requested
       
-      //json library of DokuWiki
-      require_once DOKU_INC . 'inc/JSON.php';
-      $json = new JSON();
- 
       //set content type
       header('Content-Type: application/json');
-      echo $json->encode($data);            
+      echo json_encode($data);            
     }
  
 }              
