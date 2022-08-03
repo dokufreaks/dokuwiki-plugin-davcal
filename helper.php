@@ -16,7 +16,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   /**
     * Constructor to load the configuration and the SQLite plugin
     */
-  public function helper_plugin_davcal() {
+  public function __construct() {
     dbglog('---- DAVCAL helper.php init');
   }
 
