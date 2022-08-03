@@ -11,7 +11,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
     protected $hlp = null;
     
     // Load the helper plugin
-    public function syntax_plugin_davcal_calendar() {  
+    public function __construct() {  
         $this->hlp =& plugin_load('helper', 'davcal');     
     }
     
