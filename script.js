@@ -1,10 +1,10 @@
-/* DOKUWIKI:include_once fullcalendar-3.7.0/moment.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/fullcalendar.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/locale/de.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/locale/en.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/locale/fr.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/locale/nl.js */
-/* DOKUWIKI:include_once fullcalendar-3.7.0/locale/ru.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/moment.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/fullcalendar.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/locale/de.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/locale/en.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/locale/fr.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/locale/nl.js */
+/* DOKUWIKI:include_once fullcalendar-3.10.5/locale/ru.js */
 /* DOKUWIKI:include_once datetimepicker-2.4.5/jquery.datetimepicker.js */
 /* DOKUWIKI:include_once jstz.js */
 
