@@ -25,7 +25,7 @@ if(is_null($hlp))
     die('Error loading helper plugin');
 }
 
-$baseUri = DOKU_BASE.'lib/plugins/davcal/'.basename(__FILE__).'/';
+$baseUri = DOKU_REL.'lib/plugins/davcal/'.basename(__FILE__).'/';
 
 if($hlp->getConfig('disable_sync') === 1)
 {
