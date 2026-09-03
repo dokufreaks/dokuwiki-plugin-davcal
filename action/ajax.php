@@ -22,6 +22,9 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
     function handle_ajax_call_unknown(&$event, $param) {
       if($event->data != 'plugin_davcal') return;
       
+      // Buffer output so PHP warnings don't corrupt JSON response
+      ob_start();
+
       $event->preventDefault();
       $event->stopPropagation();
       global $INPUT;
@@ -82,6 +85,20 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
                   {
                     $data['result'] = true;
                     $data['html'] = $this->getLang('event_added');
+                    // Auto-create event page for appearances calendar
+                    if($id === 'calendars:appearances_calendar')
+                    {
+                        // Look up the real UID by finding the most recently added event
+                        $realUid = $this->hlp->getMostRecentEventUid($id);
+                        if($realUid)
+                            $params['uid'] = $realUid;
+                        $pageId = $this->hlp->createEventPage($id, $params);
+                        if($pageId !== false)
+                        {
+                            $data['eventpage_url'] = wl($pageId);
+                            $data['eventpage_id'] = $pageId;
+                        }
+                    }
                   }
                   else
                   {
@@ -133,6 +150,22 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
           case 'deleteEvent':
               if($write)
               {
+                  // For appearances calendar, also delete the generated wiki page.
+                  // Skipped when only one occurrence is being removed, since the
+                  // rest of the series still needs its page.
+                  $singleOccurrence = (isset($params['edit_mode']) && $params['edit_mode'] === 'single'
+                                       && !empty($params['occurrence_date']));
+                  if($id === 'calendars:appearances_calendar' && !empty($params['uid']) && !$singleOccurrence)
+                  {
+                      $title = $params['eventname'] ?? '';
+                      $date  = $params['eventfrom'] ?? '';
+                      if($title && $date)
+                      {
+                          $pageId = $this->hlp->getEventPageId($id, $title, $date);
+                          if($pageId && page_exists($pageId))
+                              saveWikiText($pageId, '', 'Deleted: event removed from calendar');
+                      }
+                  }
                   $res = $this->hlp->deleteCalendarEntryForPage($id, $params);
                   if($res === true)
                   {
@@ -181,10 +214,132 @@ class action_plugin_davcal_ajax extends DokuWiki_Action_Plugin {
                   $data['html'] = $this->getLang('error_saving');
               }
           break;
+
+          // Check if an event page already exists
+          case 'checkEventPage':
+              $eventTitle = $params['title'];
+              $eventDate = $params['date'];
+              $pageId = $this->hlp->getEventPageId($id, $eventTitle, $eventDate);
+              if($pageId === false)
+              {
+                  $data['result'] = false;
+                  $data['html'] = $this->getLang('unknown_error');
+              }
+              else
+              {
+                  $data['result'] = true;
+                  $data['exists'] = page_exists($pageId);
+                  $data['url'] = wl($pageId);
+                  $data['page_id'] = $pageId;
+              }
+          break;
+          // Create an event page
+          case 'createEventPage':
+              if($write)
+              {
+                  $pageId = $this->hlp->createEventPage($id, $params);
+                  if($pageId === false)
+                  {
+                      $data['result'] = false;
+                      $data['html'] = $this->getLang('unknown_error');
+                  }
+                  else
+                  {
+                      $data['result'] = true;
+                      $data['url'] = wl($pageId);
+                  }
+              }
+              else
+              {
+                  $data['result'] = false;
+                  $data['html'] = $this->getLang('no_permission');
+              }
+          break;
+          // Regenerate an appearances event page preserving Notes and Recording Links
+          case 'regenAppearancePage':
+              if($write)
+              {
+                  try
+                  {
+                      $pageId = isset($params['page_id']) ? $params['page_id'] : '';
+                      if(empty($pageId))
+                      {
+                          $data['result'] = false;
+                          $data['html'] = 'No page ID provided.';
+                          break;
+                      }
+                      $result = $this->hlp->regenAppearanceEventPage($pageId, $params);
+                      if($result)
+                      {
+                          $data['result'] = true;
+                          $data['url'] = wl($pageId);
+                      }
+                      else
+                      {
+                          $data['result'] = false;
+                          $data['html'] = 'Failed to regenerate page.';
+                      }
+                  }
+                  catch(\Exception $e)
+                  {
+                      $data['result'] = false;
+                      $data['html'] = 'Server error: ' . $e->getMessage();
+                  }
+              }
+              else
+              {
+                  $data['result'] = false;
+                  $data['html'] = $this->getLang('no_permission');
+              }
+          break;
+          case 'appendMember':
+              if($write)
+              {
+                  try
+                  {
+                      $pageId = isset($params['page_id']) ? $params['page_id'] : '';
+                      $uid    = isset($params['uid']) ? $params['uid'] : '';
+                      if(empty($pageId))
+                      {
+                          $data['result'] = false;
+                          $data['html'] = 'No page ID provided.';
+                          break;
+                      }
+                      $res = $this->hlp->appendMemberToEventPage($pageId, $params);
+                      if($res !== false)
+                      {
+                          // Ensure X-DAVCAL-MEMBERS is set to at least 1 so badge shows
+                          if(!empty($uid))
+                              $this->hlp->setMembersFlag($id, $uid);
+                          $data['result'] = true;
+                          $data['html'] = 'Member info added!';
+                          $data['url'] = wl($pageId);
+                      }
+                      else
+                      {
+                          $data['result'] = false;
+                          $data['html'] = 'Could not add member — event page not found.';
+                      }
+                  }
+                  catch(\Exception $e)
+                  {
+                      $data['result'] = false;
+                      $data['html'] = 'Server error: ' . $e->getMessage();
+                  }
+              }
+              else
+              {
+                  $data['result'] = false;
+                  $data['html'] = $this->getLang('no_permission');
+              }
+          break;
       }
-    
-      // If we are still here, JSON output is requested
+
+     // If we are still here, JSON output is requested
       
+      // Discard any stray output (PHP warnings etc) that would corrupt JSON
+      ob_end_clean();
+
       //set content type
       header('Content-Type: application/json');
       echo json_encode($data);            

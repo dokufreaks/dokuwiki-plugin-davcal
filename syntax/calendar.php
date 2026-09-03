@@ -155,7 +155,7 @@ class syntax_plugin_davcal_calendar extends DokuWiki_Syntax_Plugin {
                 // Otherwise, retrieve the color information from the calendar settings
                 else
                 {
-                    $calid = $this->hlp->getCalendarIdForPage($ID);
+                    $calid = $this->hlp->getCalendarIdForPage($id);
                     $settings = $this->hlp->getCalendarSettings($calid);
                     if (is_array($settings) && isset($settings['calendarcolor'])) {
                         $color = $settings['calendarcolor'];

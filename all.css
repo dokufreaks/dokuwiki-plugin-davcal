@@ -29,7 +29,8 @@
 }
 
 .dw_davcal__text {
-    width: 220px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #dw_davcal__editevent_attachments td {

@@ -9,7 +9,6 @@
 if(!defined('DOKU_INC')) die();
 
 class helper_plugin_davcal extends DokuWiki_Plugin {
-
   protected $sqlite = null;
   protected $cachedValues = array();
 
@@ -146,9 +145,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    * based on the stored metadata
    *
    * @param string $id optional The page id
+   * @param bool $skipPermissionCheck optional Skip permission filtering (for private URLs)
    * @return mixed The pages as array or false
    */
-  public function getCalendarPagesByMeta($id = null)
+  public function getCalendarPagesByMeta($id = null, $skipPermissionCheck = false)
   {
       if(is_null($id))
       {
@@ -160,11 +160,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       if(isset($meta['id']))
       {
-          // Filter the list of pages by permission
-          $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
-          if(empty($pages))
-            return false;
-          return $pages;
+          if($skipPermissionCheck)
+          {
+              // For private URLs, return all pages without permission filtering
+              return $meta['id'];
+          }
+          else
+          {
+              // Filter the list of pages by permission
+              $pages = $this->filterCalendarPagesByUserPermission($meta['id']);
+              if(empty($pages))
+                return false;
+              return $pages;
+          }
       }
       return false;
   }
@@ -824,6 +832,54 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $dtEndEv['VALUE'] = 'DATE';
       }
 
+      // Add recurring rule if specified (AFTER dates are set)
+      if(isset($params['recurrence']) && !empty($params['recurrence']))
+      {
+          $recurrence = $params['recurrence'];
+          $rrule = '';
+
+          switch($recurrence)
+          {
+              case 'DAILY':
+                  $rrule = 'FREQ=DAILY';
+                  break;
+              case 'WEEKLY':
+                  $rrule = 'FREQ=WEEKLY';
+                  break;
+              case 'BIWEEKLY':
+                  $rrule = 'FREQ=WEEKLY;INTERVAL=2';
+                  break;
+              case 'MONTHLY':
+                  $rrule = 'FREQ=MONTHLY';
+                  break;
+              case 'YEARLY':
+                  $rrule = 'FREQ=YEARLY';
+                  break;
+          }
+
+          if(!empty($rrule))
+          {
+              if($recurrence === 'MONTHLY' && (empty($params['recurrence_monthly_mode']) || $params['recurrence_monthly_mode'] === 'weekday') && !empty($params['recurrence_byday']) && !empty($params['recurrence_bysetpos']))
+              {
+                  $rrule .= ';BYDAY=' . $params['recurrence_byday'] . ';BYSETPOS=' . $params['recurrence_bysetpos'];
+              }
+              // 'date' mode: just FREQ=MONTHLY, iCal repeats on same day of month by default
+              elseif(($recurrence === 'WEEKLY' || $recurrence === 'BIWEEKLY') && !empty($params['recurrence_weekday']))
+              {
+                  $rrule .= ';BYDAY=' . $params['recurrence_weekday'];
+              }
+              $event->add('RRULE', $rrule);
+          }
+      }
+
+      // Add public flag if specified
+      if(!empty($params['public']) && $params['public'] == '1')
+          $event->add('X-DAVCAL-PUBLIC', '1');
+
+      // Add members flag/count if specified
+      if(!empty($params['members']) && $params['members'] == '1')
+          $event->add('X-DAVCAL-MEMBERS', '1');
+
       $eventStr = $vcalendar->serialize();
 
       if(strpos($id, 'webdav://') === 0)
@@ -845,9 +901,10 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           if(!$sqlite)
             return false;
           $query = "INSERT INTO calendarobjects (calendarid, uri, calendardata, lastmodified, componenttype, firstoccurence, lastoccurence, size, etag, uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+          $extraData = $this->getDenormalizedData($eventStr);
           $res = $sqlite->query($query, $calid, $uri, $eventStr, $now->getTimestamp(), 'VEVENT',
-                                      $event->DTSTART->getDateTime()->getTimeStamp(), $event->DTEND->getDateTime()->getTimeStamp(),
-                                      strlen($eventStr), md5($eventStr), $uuid);
+                                $extraData['firstOccurence'], $extraData['lastOccurence'],
+                                strlen($eventStr), md5($eventStr), $uuid);
 
           // If successfully, update the sync token database
           if($res !== false)
@@ -964,7 +1021,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $timezone = new \DateTimeZone('UTC');
       $data = array();
       $calname = 'unknown';
-
       $sqlite = $this->getDB();
       if(!$sqlite)
         return false;
@@ -976,15 +1032,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $endTs = null;
       if($startDate !== null)
       {
-        $startTs = new \DateTime($startDate);
-        $query .= " AND lastoccurence > ?";
-        $params[] = $startTs->getTimestamp();
+          $startTs = new \DateTime($startDate);
+          $query .= " AND lastoccurence > ?";
+          $params[] = $startTs->getTimestamp();
       }
       if($endDate !== null)
       {
-        $endTs = new \DateTime($endDate);
-        $query .= " AND firstoccurence < ?";
-        $params[] = $endTs->getTimestamp();
+          $endTs = new \DateTime($endDate);
+          $query .= " AND firstoccurence < ?";
+          $params[] = $endTs->getTimestamp();
       }
 
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
@@ -1023,26 +1079,91 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
               $recurrence = $vcal->VEVENT->RRULE;
               if($recurrence != null)
               {
-                  $rEvents = new \Sabre\VObject\Recur\EventIterator(array($vcal->VEVENT));
+                  // The whole series lives in one calendarobjects row, master
+                  // VEVENT plus any RECURRENCE-ID overrides. All of them must
+                  // be handed to the iterator, otherwise moved occurrences are
+                  // silently ignored and the RRULE date is shown instead.
+                  $seriesEvents = array();
+                  foreach($vcal->VEVENT as $seriesEvent)
+                      $seriesEvents[] = $seriesEvent;
+                  $rEvents = new \Sabre\VObject\Recur\EventIterator($seriesEvents);
                   $rEvents->rewind();
-                  while($rEvents->valid())
+                  $count = 0;
+                  while($rEvents->valid() && $count < 500)
                   {
-                      $event = $rEvents->getEventObject();
-                      if(($endTs !== null) && ($rEvents->getDtStart()->getTimestamp() > $endTs->getTimestamp()))
+                      $count++;
+                      $occurrenceStart = $rEvents->getDtStart();
+                      $occurrenceEnd = $rEvents->getDtEnd();
+
+                      // If we're past the end date, stop iterating
+                      if(($endTs !== null) && ($occurrenceStart->getTimestamp() > $endTs->getTimestamp()))
+                      {
                           break;
-                      if(($startTs != null) && ($rEvents->getDtEnd()->getTimestamp() < $startTs->getTimestamp()))
+                      }
+
+                      // Skip if this occurrence ends before our start date
+                      if(($startTs !== null) && ($occurrenceEnd->getTimestamp() < $startTs->getTimestamp()))
                       {
                           $rEvents->next();
                           continue;
                       }
-                      $data[] = array_merge(array('calendarname' => $calname),
-                                            $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true));
+
+                      // This occurrence is within our range, add it
+                      $event = $rEvents->getEventObject();
+                      $occurrenceEntry = $this->convertIcalDataToEntry($event, $id, $timezone, $row['uid'], $color, true);
+                      // For an occurrence that has already been overridden, hand
+                      // the original RECURRENCE-ID back to the client. Editing it
+                      // again must key off that value, not off the occurrence's
+                      // current start, otherwise the next save writes an override
+                      // pointing at a date the RRULE never produces.
+                      if(isset($event->{'RECURRENCE-ID'}))
+                          $occurrenceEntry['recurrenceid'] = $event->{'RECURRENCE-ID'}->getDateTime()->format(\DateTime::ATOM);
+                      // Occurrence objects from EventIterator may not carry RRULE,
+                      // so fall back to the master VEVENT for recurrence info
+                      if(empty($occurrenceEntry['recurrence']))
+                      {
+                          $masterRrule = $vcal->VEVENT->RRULE;
+                          if($masterRrule !== null)
+                          {
+                              $rruleStr = (string)$masterRrule;
+                              if(strpos($rruleStr, 'FREQ=DAILY') !== false)
+                              {
+                                  $occurrenceEntry['recurrence'] = 'DAILY';
+                                  $occurrenceEntry['recurrence_weekday'] = '';
+                              }
+                              elseif(strpos($rruleStr, 'FREQ=WEEKLY') !== false)
+                              {
+                                  if(strpos($rruleStr, 'INTERVAL=2') !== false)
+                                      $occurrenceEntry['recurrence'] = 'BIWEEKLY';
+                                  else
+                                      $occurrenceEntry['recurrence'] = 'WEEKLY';
+                                  if(preg_match('/BYDAY=([A-Z]+)/', $rruleStr, $m))
+                                      $occurrenceEntry['recurrence_weekday'] = $m[1];
+                                  else
+                                      $occurrenceEntry['recurrence_weekday'] = '';
+                              }
+                              elseif(strpos($rruleStr, 'FREQ=MONTHLY') !== false)
+                              {
+                                  $occurrenceEntry['recurrence'] = 'MONTHLY';
+                                  if(preg_match('/BYDAY=([A-Z]+)/', $rruleStr, $m))
+                                      $occurrenceEntry['recurrence_byday'] = $m[1];
+                                  if(preg_match('/BYSETPOS=(-?[0-9]+)/', $rruleStr, $m))
+                                      $occurrenceEntry['recurrence_bysetpos'] = $m[1];
+                              }
+                              elseif(strpos($rruleStr, 'FREQ=YEARLY') !== false)
+                              {
+                                  $occurrenceEntry['recurrence'] = 'YEARLY';
+                                  $occurrenceEntry['recurrence_weekday'] = '';
+                              }
+                          }
+                      }
+                      $data[] = array_merge(array('calendarname' => $calname), $occurrenceEntry);
                       $rEvents->next();
                   }
               }
               else
-                $data[] = array_merge(array('calendarname' => $calname),
-                                      $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color));
+                  $data[] = array_merge(array('calendarname' => $calname),
+                                        $this->convertIcalDataToEntry($vcal->VEVENT, $id, $timezone, $row['uid'], $color));
           }
       }
       return $data;
@@ -1065,33 +1186,33 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       // Parse only if the start date/time is present
       if($start !== null)
       {
-        $dtStart = $start->getDateTime();
-        $dtStart->setTimezone($timezone);
+          $dtStart = $start->getDateTime();
+          $dtStart->setTimezone($timezone);
 
-        // moment.js doesn't like times be given even if
-        // allDay is set to true
-        // This should fix T23
-        if($start['VALUE'] == 'DATE')
-        {
-          $entry['allDay'] = true;
-          $entry['start'] = $dtStart->format("Y-m-d");
-        }
-        else
-        {
-          $entry['allDay'] = false;
-          $entry['start'] = $dtStart->format(\DateTime::ATOM);
-        }
+          // moment.js doesn't like times be given even if
+          // allDay is set to true
+          // This should fix T23
+          if($start['VALUE'] == 'DATE')
+          {
+              $entry['allDay'] = true;
+              $entry['start'] = $dtStart->format("Y-m-d");
+          }
+          else
+          {
+              $entry['allDay'] = false;
+              $entry['start'] = $dtStart->format(\DateTime::ATOM);
+          }
       }
       $end = $event->DTEND;
       // Parse only if the end date/time is present
       if($end !== null)
       {
-        $dtEnd = $end->getDateTime();
-        $dtEnd->setTimezone($timezone);
-        if($end['VALUE'] == 'DATE')
-          $entry['end'] = $dtEnd->format("Y-m-d");
-        else
-          $entry['end'] = $dtEnd->format(\DateTime::ATOM);
+          $dtEnd = $end->getDateTime();
+          $dtEnd->setTimezone($timezone);
+          if($end['VALUE'] == 'DATE')
+              $entry['end'] = $dtEnd->format("Y-m-d");
+          else
+              $entry['end'] = $dtEnd->format(\DateTime::ATOM);
       }
       $duration = $event->DURATION;
       // Parse duration only if start is set, but end is missing
@@ -1106,15 +1227,15 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       }
       $description = $event->DESCRIPTION;
       if($description !== null)
-        $entry['description'] = (string)$description;
+          $entry['description'] = (string)$description;
       else
-        $entry['description'] = '';
+          $entry['description'] = '';
       $attachments = $event->ATTACH;
       if($attachments !== null)
       {
-        $entry['attachments'] = array();
-        foreach($attachments as $attachment)
-          $entry['attachments'][] = (string)$attachment;
+          $entry['attachments'] = array();
+          foreach($attachments as $attachment)
+              $entry['attachments'][] = (string)$attachment;
       }
       $entry['title'] = (string)$event->summary;
       $entry['location'] = (string)$event->location;
@@ -1122,6 +1243,67 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $entry['page'] = $page;
       $entry['color'] = $color;
       $entry['recurring'] = $recurring;
+
+      // Extract public flag
+      $publicProp = $event->{'X-DAVCAL-PUBLIC'};
+      $entry['public'] = ($publicProp !== null && (string)$publicProp === '1') ? '1' : '0';
+
+      // Extract members count
+      $membersProp = $event->{'X-DAVCAL-MEMBERS'};
+      $membersVal = ($membersProp !== null) ? (string)$membersProp : '0';
+      $entry['members'] = is_numeric($membersVal) ? $membersVal : ($membersVal === '1' ? '1' : '0');
+
+      // Extract recurring rule if it exists
+      $rrule = $event->RRULE;
+      if($rrule !== null)
+      {
+          $rruleStr = (string)$rrule;
+          // Parse the RRULE to get the frequency
+          if(strpos($rruleStr, 'FREQ=DAILY') !== false)
+          {
+              $entry['recurrence'] = 'DAILY';
+              $entry['recurrence_weekday'] = '';
+          }
+          elseif(strpos($rruleStr, 'FREQ=WEEKLY') !== false)
+          {
+              if(strpos($rruleStr, 'INTERVAL=2') !== false)
+                  $entry['recurrence'] = 'BIWEEKLY';
+              else
+                  $entry['recurrence'] = 'WEEKLY';
+              if(preg_match('/BYDAY=([A-Z]+)/', $rruleStr, $m))
+                  $entry['recurrence_weekday'] = $m[1];
+              else
+                  $entry['recurrence_weekday'] = '';
+          }
+          elseif(strpos($rruleStr, 'FREQ=MONTHLY') !== false)
+          {
+              $entry['recurrence'] = 'MONTHLY';
+              $entry['recurrence_weekday'] = '';
+              if(preg_match('/BYDAY=([A-Z]+)/', $rruleStr, $m))
+                  $entry['recurrence_byday'] = $m[1];
+              else
+                  $entry['recurrence_byday'] = '';
+              if(preg_match('/BYSETPOS=(-?[0-9]+)/', $rruleStr, $m))
+                  $entry['recurrence_bysetpos'] = $m[1];
+              else
+                  $entry['recurrence_bysetpos'] = '';
+          }
+          elseif(strpos($rruleStr, 'FREQ=YEARLY') !== false)
+          {
+              $entry['recurrence'] = 'YEARLY';
+              $entry['recurrence_weekday'] = '';
+          }
+          else
+          {
+              $entry['recurrence'] = '';
+              $entry['recurrence_weekday'] = '';
+          }
+      }
+      else
+      {
+          $entry['recurrence'] = '';
+          $entry['recurrence_weekday'] = '';
+      }
 
       return $entry;
   }
@@ -1252,14 +1434,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       if(strpos($id, 'webdav://') === 0)
       {
-        $wdc =& plugin_load('helper', 'webdavclient');
-        if(is_null($wdc))
-          return false;
-        $event = $wdc->getCalendarEntryByUid($uid);
+          $wdc =& plugin_load('helper', 'webdavclient');
+          if(is_null($wdc))
+            return false;
+          $event = $wdc->getCalendarEntryByUid($uid);
       }
       else
       {
-        $event = $this->getEventWithUid($uid);
+          $event = $this->getEventWithUid($uid);
       }
 
       // Load SabreDAV
@@ -1285,34 +1467,87 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $vevent->remove('LAST-MODIFIED');
       $vevent->remove('ATTACH');
       $vevent->remove('LOCATION');
+      $vevent->remove('X-DAVCAL-PUBLIC');
+      $vevent->remove('X-DAVCAL-MEMBERS');
 
       // Add new time stamps, description and location
       $vevent->add('DTSTAMP', $dtStamp);
       $vevent->add('LAST-MODIFIED', $dtStamp);
       if($description !== '')
-        $vevent->add('DESCRIPTION', $description);
+          $vevent->add('DESCRIPTION', $description);
       if($location !== '')
-        $vevent->add('LOCATION', $location);
+          $vevent->add('LOCATION', $location);
+
+      // Add public flag if specified
+      if(!empty($params['public']) && $params['public'] == '1')
+          $vevent->add('X-DAVCAL-PUBLIC', '1');
+
+      // Add members flag if specified
+      if(!empty($params['members']) && $params['members'] == '1')
+          $vevent->add('X-DAVCAL-MEMBERS', '1');
 
       // Add attachments
       $attachments = $params['attachments'];
       if(!is_null($attachments))
-        foreach($attachments as $attachment)
-          $vevent->add('ATTACH', $attachment);
+          foreach($attachments as $attachment)
+              $vevent->add('ATTACH', $attachment);
+
+      // Add recurring rule if specified
+      if(isset($params['recurrence']) && !empty($params['recurrence']))
+      {
+          $recurrence = $params['recurrence'];
+          $rrule = '';
+
+          switch($recurrence)
+          {
+              case 'DAILY':
+                  $rrule = 'FREQ=DAILY';
+                  break;
+              case 'WEEKLY':
+                  $rrule = 'FREQ=WEEKLY';
+                  break;
+              case 'BIWEEKLY':
+                  $rrule = 'FREQ=WEEKLY;INTERVAL=2';
+                  break;
+              case 'MONTHLY':
+                  $rrule = 'FREQ=MONTHLY';
+                  break;
+              case 'YEARLY':
+                  $rrule = 'FREQ=YEARLY';
+                  break;
+          }
+
+          // Remove existing RRULE first
+          $vevent->remove('RRULE');
+
+          if(!empty($rrule))
+          {
+              if($recurrence === 'MONTHLY' && (empty($params['recurrence_monthly_mode']) || $params['recurrence_monthly_mode'] === 'weekday') && !empty($params['recurrence_byday']) && !empty($params['recurrence_bysetpos']))
+              {
+                  $rrule .= ';BYDAY=' . $params['recurrence_byday'] . ';BYSETPOS=' . $params['recurrence_bysetpos'];
+              }
+              // 'date' mode: just FREQ=MONTHLY, iCal repeats on same day of month by default
+              elseif(($recurrence === 'WEEKLY' || $recurrence === 'BIWEEKLY') && !empty($params['recurrence_weekday']))
+              {
+                  $rrule .= ';BYDAY=' . $params['recurrence_weekday'];
+              }
+              $vevent->add('RRULE', $rrule);
+          }
+      }
 
       // Setup DTSTART
       $dtStart = new \DateTime();
       $dtStart->setTimezone($timezone);
       $dtStart->setDate(intval($startDate[0]), intval($startDate[1]), intval($startDate[2]));
       if($params['allday'] != '1')
-        $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
+          $dtStart->setTime(intval($startTime[0]), intval($startTime[1]), 0);
 
       // Setup DTEND
       $dtEnd = new \DateTime();
       $dtEnd->setTimezone($timezone);
       $dtEnd->setDate(intval($endDate[0]), intval($endDate[1]), intval($endDate[2]));
       if($params['allday'] != '1')
-        $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
+          $dtEnd->setTime(intval($endTime[0]), intval($endTime[1]), 0);
 
       // According to the VCal spec, we need to add a whole day here
       if($params['allday'] == '1')
@@ -1329,6 +1564,7 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $dtEndEv['VALUE'] = 'DATE';
       }
       $eventStr = $vcal->serialize();
+
       if(strpos($id, 'webdav://') === 0)
       {
           $connectionId = str_replace('webdav://', '', $id);
@@ -1340,11 +1576,84 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           if(!$sqlite)
             return false;
           $now = new DateTime();
-          // Actually write to the database
-          $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
-                   "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
-          $res = $sqlite->query($query, $eventStr, $now->getTimestamp(), $dtStart->getTimestamp(),
-                                      $dtEnd->getTimestamp(), strlen($eventStr), md5($eventStr), $uid);
+
+          // Handle single occurrence edit
+          if(isset($params['edit_mode']) && $params['edit_mode'] === 'single' && !empty($params['occurrence_date']))
+          {
+              // Re-read the original unmodified calendar data
+              $originalEvent = $this->getEventWithUid($uid);
+              $vcalOriginal = \Sabre\VObject\Reader::read($originalEvent['calendardata']);
+
+              // RECURRENCE-ID must match the original occurrence's DTSTART exactly
+              $occurrenceDate = new \DateTime($params['occurrence_date']);
+              $occurrenceDate->setTimezone($timezone);
+              $occurrenceTs = $occurrenceDate->getTimestamp();
+
+              // Drop any override that already covers this occurrence. Saving
+              // twice used to append a second VEVENT carrying the same
+              // RECURRENCE-ID, and the occurrence was then drawn once per
+              // override. Comparison is by timestamp, since the same instant can
+              // be written under different TZIDs.
+              $staleOverrides = array();
+              foreach($vcalOriginal->VEVENT as $existingEvent)
+              {
+                  if(!isset($existingEvent->{'RECURRENCE-ID'}))
+                      continue;
+                  if($existingEvent->{'RECURRENCE-ID'}->getDateTime()->getTimestamp() === $occurrenceTs)
+                      $staleOverrides[] = $existingEvent;
+              }
+              foreach($staleOverrides as $staleOverride)
+                  $vcalOriginal->remove($staleOverride);
+
+              // Create the exception VEVENT
+              $exEvent = $vcalOriginal->add('VEVENT');
+              $exEvent->add('UID', $uid);
+              $exEvent->add('RECURRENCE-ID', $occurrenceDate);
+
+              // Set the new values
+              $dtStampEx = new \DateTime(null, new \DateTimeZone('UTC'));
+              $exEvent->add('DTSTAMP', $dtStampEx);
+              $exEvent->add('LAST-MODIFIED', $dtStampEx);
+              $exEvent->add('DTSTART', $dtStart);
+              $exEvent->add('DTEND', $dtEnd);
+              $exEvent->add('SUMMARY', $params['eventname']);
+
+              if(!empty($params['eventdescription']))
+                  $exEvent->add('DESCRIPTION', $params['eventdescription']);
+              if(!empty($params['eventlocation']))
+                  $exEvent->add('LOCATION', $params['eventlocation']);
+
+              $attachments = $params['attachments'];
+              if(!is_null($attachments))
+                  foreach($attachments as $attachment)
+                      $exEvent->add('ATTACH', $attachment);
+
+              if($params['allday'] == '1')
+              {
+                  $exEvent->DTSTART['VALUE'] = 'DATE';
+                  $exEvent->DTEND['VALUE'] = 'DATE';
+              }
+
+              $eventStr = $vcalOriginal->serialize();
+              $extraData = $this->getDenormalizedData($eventStr);
+
+              $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
+                       "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
+              $res = $sqlite->query($query, $eventStr, $now->getTimestamp(),
+                                          $extraData['firstOccurence'], $extraData['lastOccurence'],
+                                          strlen($eventStr), md5($eventStr), $uid);
+          }
+          else
+          {
+              // Edit all occurrences - existing behavior
+              $extraData = $this->getDenormalizedData($eventStr);
+              $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
+                       "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
+              $res = $sqlite->query($query, $eventStr, $now->getTimestamp(),
+                                          $extraData['firstOccurence'], $extraData['lastOccurence'],
+                                          strlen($eventStr), md5($eventStr), $uid);
+          }
+
           if($res !== false)
           {
               $this->updateSyncTokenLog($calid, $uri, 'modified');
@@ -1388,14 +1697,23 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   public function deleteCalendarEntryForPage($id, $params)
   {
       $uid = $params['uid'];
+
+      // A single occurrence is excluded rather than deleted, otherwise the
+      // whole series goes with it.
+      if(isset($params['edit_mode']) && $params['edit_mode'] === 'single'
+         && !empty($params['occurrence_date']) && strpos($id, 'webdav://') !== 0)
+      {
+          return $this->deleteSingleOccurrenceForPage($id, $params);
+      }
+
       if(strpos($id, 'webdav://') === 0)
       {
-        $wdc =& plugin_load('helper', 'webdavclient');
-        if(is_null($wdc))
-          return false;
-        $connectionId = str_replace('webdav://', '', $id);
-        $result = $wdc->deleteCalendarEntry($connectionId, $uid);
-        return $result;
+          $wdc =& plugin_load('helper', 'webdavclient');
+          if(is_null($wdc))
+            return false;
+          $connectionId = str_replace('webdav://', '', $id);
+          $result = $wdc->deleteCalendarEntry($connectionId, $uid);
+          return $result;
       }
       $sqlite = $this->getDB();
       if(!$sqlite)
@@ -1410,6 +1728,103 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $this->updateSyncTokenLog($calid, $uri, 'deleted');
       }
       return true;
+  }
+
+  /**
+   * Delete a single occurrence of a recurring event. The whole series lives in
+   * one calendarobjects row, so the occurrence is excluded by adding an EXDATE
+   * to the master VEVENT instead of removing the row.
+   *
+   * Any RECURRENCE-ID override for the same occurrence is removed as well,
+   * otherwise it survives as a detached event.
+   *
+   * @param string $id The page's ID
+   * @param array $params The parameter array to work with
+   *
+   * @return boolean True on success, otherwise false
+   */
+  public function deleteSingleOccurrenceForPage($id, $params)
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+      $uid = $params['uid'];
+
+      $event = $this->getEventWithUid($uid);
+      if(!isset($event['calendardata']))
+        return false;
+      $calid = $event['calendarid'];
+      $uri = $event['uri'];
+
+      $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
+
+      // The master VEVENT is the one without a RECURRENCE-ID
+      $master = null;
+      foreach($vcal->VEVENT as $vevent)
+      {
+          if(!isset($vevent->{'RECURRENCE-ID'}))
+          {
+              $master = $vevent;
+              break;
+          }
+      }
+
+      // Not actually a series, so fall back to removing the object
+      if(is_null($master) || !isset($master->RRULE))
+      {
+          return $this->deleteCalendarEntryForPage($id, array('uid' => $uid));
+      }
+
+      $dtStart = $master->DTSTART;
+      $startDt = $dtStart->getDateTime();
+      $isAllDay = (isset($dtStart['VALUE']) && strtoupper((string)$dtStart['VALUE']) === 'DATE');
+
+      // The occurrence date arrives as an ISO 8601 UTC timestamp. Line it up
+      // with DTSTART's timezone so the EXDATE matches what clients expand.
+      $exDate = new \DateTime($params['occurrence_date']);
+      $exDate->setTimezone($startDt->getTimezone());
+      if($isAllDay)
+          $exDate = new \DateTime($exDate->format('Y-m-d'), $startDt->getTimezone());
+
+      // Drop an override for this occurrence, if one exists
+      $overrides = array();
+      foreach($vcal->VEVENT as $vevent)
+      {
+          if(!isset($vevent->{'RECURRENCE-ID'}))
+              continue;
+          $recurrenceId = $vevent->{'RECURRENCE-ID'}->getDateTime();
+          if($recurrenceId->getTimestamp() === $exDate->getTimestamp())
+              $overrides[] = $vevent;
+      }
+      foreach($overrides as $override)
+          $vcal->remove($override);
+
+      // Exclude the occurrence
+      $exDateProp = $master->add('EXDATE', $exDate);
+      if($isAllDay)
+          $exDateProp['VALUE'] = 'DATE';
+      elseif(isset($dtStart['TZID']))
+          $exDateProp['TZID'] = (string)$dtStart['TZID'];
+
+      $master->remove('LAST-MODIFIED');
+      $master->add('LAST-MODIFIED', new \DateTime('now', new \DateTimeZone('UTC')));
+
+      $eventStr = $vcal->serialize();
+      $extraData = $this->getDenormalizedData($eventStr);
+
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+        return false;
+      $now = new \DateTime();
+      $query = "UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, ".
+               "firstoccurence = ?, lastoccurence = ?, size = ?, etag = ? WHERE uid = ?";
+      $res = $sqlite->query($query, $eventStr, $now->getTimestamp(),
+                            $extraData['firstOccurence'], $extraData['lastOccurence'],
+                            strlen($eventStr), md5($eventStr), $uid);
+      if($res !== false)
+      {
+          $this->updateSyncTokenLog($calid, $uri, 'modified');
+          return true;
+      }
+      return false;
   }
 
   /**
@@ -1498,14 +1913,14 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
   {
       if(is_null($user))
       {
-        if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
-        {
-          $user = $_SERVER['REMOTE_USER'];
-        }
-        else
-        {
-          return false;
-        }
+          if(isset($_SERVER['REMOTE_USER']) && !is_null($_SERVER['REMOTE_USER']))
+          {
+            $user = $_SERVER['REMOTE_USER'];
+          }
+          else
+          {
+            return false;
+          }
       }
 
       $calid = $this->getCalendarIdForPage($id);
@@ -1661,8 +2076,12 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       foreach($events as $event)
       {
           $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
-          $evt = $vcal->VEVENT;
-          $out .= $evt->serialize();
+          if(!isset($vcal->VEVENT))
+            continue;
+          // Emit every VEVENT, master plus RECURRENCE-ID overrides, so moved
+          // occurrences survive into the feed.
+          foreach($vcal->VEVENT as $evt)
+              $out .= $evt->serialize();
       }
       $out .= "END:VCALENDAR\r\n";
       return $out;
@@ -1700,9 +2119,13 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       $pageId = $row['page'];
 
       // Get the calendar pages for this aggregated calendar
-      $calendarPages = $this->getCalendarPagesByMeta($pageId);
+      $calendarPages = $this->getCalendarPagesByMeta($pageId, true); // Skip permission check for private URLs
       if($calendarPages === false || count($calendarPages) <= 1)
-        return false;
+      {
+          if($conf['allowdebug'])
+              \dokuwiki\Logger::error('DAVCAL', 'No calendar pages found or count <= 1 for page: '.$pageId.' (count: '.(is_array($calendarPages) ? count($calendarPages) : 'false').')', __FILE__, __LINE__);
+          return false;
+      }
 
       // Load SabreDAV
       require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
@@ -1717,16 +2140,19 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
           $calid = $this->getCalendarIdForPage($calPage);
           if($calid === false)
             continue;
-            
+
           $events = $this->getAllCalendarEvents($calid);
           if($events === false)
             continue;
-            
+
           foreach($events as $event)
           {
               $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
-              $evt = $vcal->VEVENT;
-              $out .= $evt->serialize();
+              if(!isset($vcal->VEVENT))
+                continue;
+              // Emit every VEVENT, master plus RECURRENCE-ID overrides.
+              foreach($vcal->VEVENT as $evt)
+                  $out .= $evt->serialize();
           }
       }
 
@@ -1762,84 +2188,83 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   protected function getDenormalizedData($calendarData)
   {
-    require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
 
-    $vObject = \Sabre\VObject\Reader::read($calendarData);
-    $componentType = null;
-    $component = null;
-    $firstOccurence = null;
-    $lastOccurence = null;
-    $uid = null;
-    foreach ($vObject->getComponents() as $component)
-    {
-        if ($component->name !== 'VTIMEZONE')
-        {
-            $componentType = $component->name;
-            $uid = (string)$component->UID;
-            break;
-        }
-    }
-    if (!$componentType)
-    {
-        return false;
-    }
-    if ($componentType === 'VEVENT')
-    {
-        $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
-        // Finding the last occurence is a bit harder
-        if (!isset($component->RRULE))
-        {
-            if (isset($component->DTEND))
-            {
-                $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
-            }
-            elseif (isset($component->DURATION))
-            {
-                $endDate = clone $component->DTSTART->getDateTime();
-                $endDate->add(\Sabre\VObject\DateTimeParser::parse($component->DURATION->getValue()));
-                $lastOccurence = $endDate->getTimeStamp();
-            }
-            elseif (!$component->DTSTART->hasTime())
-            {
-                $endDate = clone $component->DTSTART->getDateTime();
-                $endDate->modify('+1 day');
-                $lastOccurence = $endDate->getTimeStamp();
-            }
-            else
-            {
-                $lastOccurence = $firstOccurence;
-            }
-        }
-        else
-        {
-            $it = new \Sabre\VObject\Recur\EventIterator($vObject, (string)$component->UID);
-            $maxDate = new \DateTime('2038-01-01');
-            if ($it->isInfinite())
-            {
-                $lastOccurence = $maxDate->getTimeStamp();
-            }
-            else
-            {
-                $end = $it->getDtEnd();
-                while ($it->valid() && $end < $maxDate)
-                {
-                    $end = $it->getDtEnd();
-                    $it->next();
-                }
-                $lastOccurence = $end->getTimeStamp();
-            }
-        }
-    }
+      $vObject = \Sabre\VObject\Reader::read($calendarData);
+      $componentType = null;
+      $component = null;
+      $firstOccurence = null;
+      $lastOccurence = null;
+      $uid = null;
+      foreach ($vObject->getComponents() as $component)
+      {
+          if ($component->name !== 'VTIMEZONE')
+          {
+              $componentType = $component->name;
+              $uid = (string)$component->UID;
+              break;
+          }
+      }
+      if (!$componentType)
+      {
+          return false;
+      }
+      if ($componentType === 'VEVENT')
+      {
+          $firstOccurence = $component->DTSTART->getDateTime()->getTimeStamp();
+          // Finding the last occurence is a bit harder
+          if (!isset($component->RRULE))
+          {
+              if (isset($component->DTEND))
+              {
+                  $lastOccurence = $component->DTEND->getDateTime()->getTimeStamp();
+              }
+              elseif (isset($component->DURATION))
+              {
+                  $endDate = clone $component->DTSTART->getDateTime();
+                  $endDate->add(\Sabre\VObject\DateTimeParser::parse($component->DURATION->getValue()));
+                  $lastOccurence = $endDate->getTimeStamp();
+              }
+              elseif (!$component->DTSTART->hasTime())
+              {
+                  $endDate = clone $component->DTSTART->getDateTime();
+                  $endDate->modify('+1 day');
+                  $lastOccurence = $endDate->getTimeStamp();
+              }
+              else
+              {
+                  $lastOccurence = $firstOccurence;
+              }
+          }
+          else
+          {
+              $it = new \Sabre\VObject\Recur\EventIterator($vObject, (string)$component->UID);
+              $maxDate = new \DateTime('2038-01-01');
+              if ($it->isInfinite())
+              {
+                  $lastOccurence = $maxDate->getTimeStamp();
+              }
+              else
+              {
+                  $end = $it->getDtEnd();
+                  while ($it->valid() && $end < $maxDate)
+                  {
+                      $end = $it->getDtEnd();
+                      $it->next();
+                  }
+                  $lastOccurence = $end->getTimeStamp();
+              }
+          }
+      }
 
-    return array(
-        'etag'           => md5($calendarData),
-        'size'           => strlen($calendarData),
-        'componentType'  => $componentType,
-        'firstOccurence' => $firstOccurence,
-        'lastOccurence'  => $lastOccurence,
-        'uid'            => $uid,
-    );
-
+      return array(
+          'etag'           => md5($calendarData),
+          'size'           => strlen($calendarData),
+          'componentType'  => $componentType,
+          'firstOccurence' => $firstOccurence,
+          'lastOccurence'  => $lastOccurence,
+          'uid'            => $uid,
+      );
   }
 
   /**
@@ -1853,92 +2278,90 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
    */
   public function calendarQuery($calendarId, $filters)
   {
-    \dokuwiki\Logger::debug('DAVCAL', 'Calendar query executed', __FILE__, __LINE__);
-    $componentType = null;
-    $requirePostFilter = true;
-    $timeRange = null;
-    $sqlite = $this->getDB();
-    if(!$sqlite)
-      return false;
+      \dokuwiki\Logger::debug('DAVCAL', 'Calendar query executed', __FILE__, __LINE__);
+      $componentType = null;
+      $requirePostFilter = true;
+      $timeRange = null;
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+        return false;
 
-    // if no filters were specified, we don't need to filter after a query
-    if (!$filters['prop-filters'] && !$filters['comp-filters'])
-    {
-        $requirePostFilter = false;
-    }
+      // if no filters were specified, we don't need to filter after a query
+      if (!$filters['prop-filters'] && !$filters['comp-filters'])
+      {
+          $requirePostFilter = false;
+      }
 
-    // Figuring out if there's a component filter
-    if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined'])
-    {
-        $componentType = $filters['comp-filters'][0]['name'];
+      // Figuring out if there's a component filter
+      if (count($filters['comp-filters']) > 0 && !$filters['comp-filters'][0]['is-not-defined'])
+      {
+          $componentType = $filters['comp-filters'][0]['name'];
 
-        // Checking if we need post-filters
-        if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters'])
-        {
-            $requirePostFilter = false;
-        }
-        // There was a time-range filter
-        if ($componentType == 'VEVENT' && isset($filters['comp-filters'][0]['time-range']))
-        {
-            $timeRange = $filters['comp-filters'][0]['time-range'];
+          // Checking if we need post-filters
+          if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['time-range'] && !$filters['comp-filters'][0]['prop-filters'])
+          {
+              $requirePostFilter = false;
+          }
+          // There was a time-range filter
+          if ($componentType == 'VEVENT' && isset($filters['comp-filters'][0]['time-range']))
+          {
+              $timeRange = $filters['comp-filters'][0]['time-range'];
 
-            // If start time OR the end time is not specified, we can do a
-            // 100% accurate mysql query.
-            if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end']))
-            {
-                $requirePostFilter = false;
-            }
-        }
+              // If start time OR the end time is not specified, we can do a
+              // 100% accurate mysql query.
+              if (!$filters['prop-filters'] && !$filters['comp-filters'][0]['comp-filters'] && !$filters['comp-filters'][0]['prop-filters'] && (!$timeRange['start'] || !$timeRange['end']))
+              {
+                  $requirePostFilter = false;
+              }
+          }
+      }
 
-    }
+      if ($requirePostFilter)
+      {
+          $query = "SELECT uri, calendardata FROM calendarobjects WHERE calendarid = ?";
+      }
+      else
+      {
+          $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
+      }
 
-    if ($requirePostFilter)
-    {
-        $query = "SELECT uri, calendardata FROM calendarobjects WHERE calendarid = ?";
-    }
-    else
-    {
-        $query = "SELECT uri FROM calendarobjects WHERE calendarid = ?";
-    }
+      $values = array(
+          $calendarId
+      );
 
-    $values = array(
-        $calendarId
-    );
+      if ($componentType)
+      {
+          $query .= " AND componenttype = ?";
+          $values[] = $componentType;
+      }
 
-    if ($componentType)
-    {
-        $query .= " AND componenttype = ?";
-        $values[] = $componentType;
-    }
+      if ($timeRange && $timeRange['start'])
+      {
+          $query .= " AND lastoccurence > ?";
+          $values[] = $timeRange['start']->getTimeStamp();
+      }
+      if ($timeRange && $timeRange['end'])
+      {
+          $query .= " AND firstoccurence < ?";
+          $values[] = $timeRange['end']->getTimeStamp();
+      }
 
-    if ($timeRange && $timeRange['start'])
-    {
-        $query .= " AND lastoccurence > ?";
-        $values[] = $timeRange['start']->getTimeStamp();
-    }
-    if ($timeRange && $timeRange['end'])
-    {
-        $query .= " AND firstoccurence < ?";
-        $values[] = $timeRange['end']->getTimeStamp();
-    }
+      $arr = $sqlite->queryAll($query, $values);
 
-    $arr = $sqlite->queryAll($query, $values);
+      $result = array();
+      foreach($arr as $row)
+      {
+          if ($requirePostFilter)
+          {
+              if (!$this->validateFilterForObject($row, $filters))
+              {
+                  continue;
+              }
+          }
+          $result[] = $row['uri'];
+      }
 
-    $result = array();
-    foreach($arr as $row)
-    {
-        if ($requirePostFilter)
-        {
-            if (!$this->validateFilterForObject($row, $filters))
-            {
-                continue;
-            }
-        }
-        $result[] = $row['uri'];
-
-    }
-
-    return $result;
+      return $result;
   }
 
   /**
@@ -1965,7 +2388,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       $res = $validator->validate($vObject, $filters);
       return $res;
-
   }
 
   /**
@@ -1997,7 +2419,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
 
       if ($syncToken)
       {
-
           $query = "SELECT uri, operation FROM calendarchanges WHERE synctoken >= ? AND synctoken < ? AND calendarid = ? ORDER BY synctoken";
           if ($limit > 0) $query .= " LIMIT " . (int)$limit;
 
@@ -2026,7 +2447,6 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
                       $result['deleted'][] = $uri;
                       break;
               }
-
           }
       }
       else
@@ -2040,4 +2460,816 @@ class helper_plugin_davcal extends DokuWiki_Plugin {
       return $result;
   }
 
+  /**
+   * Generate a DokuWiki page ID for a given calendar event
+   *
+   * @param string $calendarPage The calendar's page ID
+   * @param string $title The event title
+   * @param string $date The occurrence date (YYYY-MM-DD)
+   *
+   * @return mixed The page ID or false
+   */
+  public function getEventPageId($calendarPage, $title, $date)
+  {
+      $namespaceMap = array(
+          'calendars:meeting_calendar'          => 'meetings',
+          'calendars:opportunities_calendar'    => 'opportunities',
+          'calendars:events_workshops_calendar' => 'events_workshops',
+          'calendars:appearances_calendar'      => 'appearances_cons',
+      );
+
+      if(!isset($namespaceMap[$calendarPage]))
+          return false;
+
+      $namespace = $namespaceMap[$calendarPage];
+
+      // Build slug from date and title
+      $slug = $date . '_' . $title;
+      $slug = strtolower($slug);
+      $slug = preg_replace('/[^a-z0-9_\-]/', '_', $slug);
+      $slug = preg_replace('/_+/', '_', $slug);
+      $slug = trim($slug, '_');
+
+      return $namespace . ':' . $slug;
+  }
+
+  /**
+   * Create a DokuWiki page for a given calendar event
+   *
+   * @param string $calendarPage The calendar's page ID
+   * @param array $eventData The event data array
+   *
+   * @return mixed The new page ID on success, otherwise false
+   */
+  public function createEventPage($calendarPage, $eventData)
+  {
+      // Normalize keys — raw form uses eventname/eventfrom, createEventPage callers use title/date
+      if(empty($eventData['title']) && !empty($eventData['eventname']))
+          $eventData['title'] = $eventData['eventname'];
+      if(empty($eventData['date']) && !empty($eventData['eventfrom']))
+          $eventData['date'] = $eventData['eventfrom'];
+      if(empty($eventData['dateto']) && !empty($eventData['eventto']))
+          $eventData['dateto'] = $eventData['eventto'];
+      if(empty($eventData['description']) && !empty($eventData['eventdescription']))
+          $eventData['description'] = $eventData['eventdescription'];
+      if(empty($eventData['location']) && !empty($eventData['eventlocation']))
+          $eventData['location'] = $eventData['eventlocation'];
+
+      $pageId = $this->getEventPageId($calendarPage, $eventData['title'], $eventData['date']);
+      if($pageId === false)
+          return false;
+
+      // Don't overwrite existing pages
+      if(page_exists($pageId))
+          return $pageId;
+
+      // Build calendar display name
+      $calendarNames = array(
+          'calendars:meeting_calendar'          => 'Meeting Calendar',
+          'calendars:opportunities_calendar'    => 'Opportunities Calendar',
+          'calendars:events_workshops_calendar' => 'Events & Workshops Calendar',
+          'calendars:appearances_calendar'      => 'Appearances Calendar',
+      );
+      $calendarName = isset($calendarNames[$calendarPage]) ? $calendarNames[$calendarPage] : $calendarPage;
+
+      // Appearances calendar gets its own page template
+      if($calendarPage === 'calendars:appearances_calendar')
+          return $this->createAppearanceEventPage($pageId, $calendarPage, $calendarName, $eventData);
+
+      // Day name lookup used by weekly/biweekly/monthly
+      $dayNames = array('SU'=>'Sunday','MO'=>'Monday','TU'=>'Tuesday','WE'=>'Wednesday',
+                        'TH'=>'Thursday','FR'=>'Friday','SA'=>'Saturday');
+
+      // Build repeats line
+      $repeatsLine = 'Does not repeat';
+      if(!empty($eventData['recurrence']))
+      {
+          if($eventData['recurrence'] === 'DAILY')
+          {
+              $repeatsLine = 'Daily';
+          }
+          elseif($eventData['recurrence'] === 'WEEKLY')
+          {
+              if(!empty($eventData['recurrence_weekday']) && isset($dayNames[$eventData['recurrence_weekday']]))
+                  $repeatsLine = 'Weekly on ' . $dayNames[$eventData['recurrence_weekday']];
+              else
+                  $repeatsLine = 'Weekly';
+          }
+          elseif($eventData['recurrence'] === 'BIWEEKLY')
+          {
+              if(!empty($eventData['recurrence_weekday']) && isset($dayNames[$eventData['recurrence_weekday']]))
+                  $repeatsLine = 'Every two weeks on ' . $dayNames[$eventData['recurrence_weekday']];
+              else
+                  $repeatsLine = 'Every two weeks';
+          }
+          elseif($eventData['recurrence'] === 'YEARLY')
+          {
+              $repeatsLine = 'Yearly';
+          }
+          elseif($eventData['recurrence'] === 'MONTHLY')
+          {
+              if(!empty($eventData['recurrence_bysetpos']) && !empty($eventData['recurrence_byday']))
+              {
+                  $posNames = array('1'=>'First','2'=>'Second','3'=>'Third','4'=>'Fourth','-1'=>'Last');
+                  $pos = isset($posNames[$eventData['recurrence_bysetpos']]) ? $posNames[$eventData['recurrence_bysetpos']] : $eventData['recurrence_bysetpos'];
+                  $day = isset($dayNames[$eventData['recurrence_byday']]) ? $dayNames[$eventData['recurrence_byday']] : $eventData['recurrence_byday'];
+                  $repeatsLine = 'Monthly on the ' . $pos . ' ' . $day;
+              }
+              else
+              {
+                  $dtForDate = new \DateTime($eventData['date']);
+                  $repeatsLine = 'Monthly on the ' . $dtForDate->format('jS');
+              }
+          }
+      }
+
+      // Build links section
+      $linksSection = 'N/A';
+      if(!empty($eventData['links']) && is_array($eventData['links']))
+      {
+          $linkLines = array();
+          foreach($eventData['links'] as $link)
+          {
+              if(!empty($link))
+                  $linkLines[] = '  * ' . $link;
+          }
+          if(!empty($linkLines))
+              $linksSection = implode("\n", $linkLines);
+      }
+
+      // Build Add to Calendar links
+      $uid = isset($eventData['uid']) ? $eventData['uid'] : '';
+      $icsUrl = DOKU_URL . 'lib/plugins/davcal/singleevent.php?uid=' . urlencode($uid) .
+                '&occurrence_date=' . urlencode($eventData['date']);
+
+      // Format dates for Google/Outlook URLs
+      $dtStart = new \DateTime($eventData['date'] . (!empty($eventData['time']) ? 'T' . str_replace(':', '', $eventData['time']) . '00' : ''));
+      $dtEnd = clone $dtStart;
+      if(!empty($eventData['time']))
+      {
+          $dtEnd->modify('+1 hour'); // default 1hr if no end time known
+          $calStart = $dtStart->format('Ymd\THis\Z');
+          $calEnd   = $dtEnd->format('Ymd\THis\Z');
+          $outlookStart = $dtStart->format(\DateTime::ATOM);
+          $outlookEnd   = $dtEnd->format(\DateTime::ATOM);
+      }
+      else
+      {
+          $calStart = $dtStart->format('Ymd');
+          $dtEnd->modify('+1 day');
+          $calEnd   = $dtEnd->format('Ymd');
+          $outlookStart = $dtStart->format('Y-m-d');
+          $outlookEnd   = $dtEnd->format('Y-m-d');
+      }
+
+      $calTitle    = rawurlencode($eventData['title']);
+      $calDesc     = rawurlencode($eventData['description'] ?? '');
+      $calLocation = rawurlencode($eventData['location'] ?? '');
+
+      $googleUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' .
+                   '&text=' . $calTitle .
+                   '&dates=' . $calStart . '/' . $calEnd .
+                   '&details=' . $calDesc .
+                   '&location=' . $calLocation;
+
+      $outlook365Url = 'https://outlook.office.com/calendar/0/deeplink/compose?subject=' . $calTitle .
+                       '&startdt=' . rawurlencode($outlookStart) .
+                       '&enddt=' . rawurlencode($outlookEnd) .
+                       '&body=' . $calDesc .
+                       '&location=' . $calLocation;
+
+      $outlookLiveUrl = 'https://outlook.live.com/calendar/0/deeplink/compose?subject=' . $calTitle .
+                        '&startdt=' . rawurlencode($outlookStart) .
+                        '&enddt=' . rawurlencode($outlookEnd) .
+                        '&body=' . $calDesc .
+                        '&location=' . $calLocation;
+
+      // Build the page content
+      $content  = '====== ' . $eventData['title'] . ' ======' . "\n\n";
+      $content .= '**Calendar:** [[' . $calendarPage . '|' . $calendarName . ']]' . "\n\n";
+      $content .= '**Date:** ' . $eventData['date'];
+      if(!empty($eventData['time']))
+          $content .= ' ' . $eventData['time'] . ' UTC';
+      $content .= "\n\n";
+      if(!empty($eventData['location']))
+          $content .= '**Location:** ' . $eventData['location'] . "\n\n";
+      $content .= '**Repeats:** ' . $repeatsLine . "\n\n";
+      $content .= '===== Description =====' . "\n\n";
+      $content .= (!empty($eventData['description']) ? $eventData['description'] : '//No description provided//') . "\n\n";
+      $content .= '===== Links =====' . "\n\n";
+      $content .= $linksSection . "\n\n";
+      $content .= '===== Add to Calendar =====' . "\n\n";
+      $content .= '  * [[' . $googleUrl . '|Google Calendar]]' . "\n";
+      $content .= '  * [[' . $outlook365Url . '|Outlook 365]]' . "\n";
+      $content .= '  * [[' . $outlookLiveUrl . '|Outlook Live]]' . "\n";
+      $content .= '  * [[' . $icsUrl . '|iCalendar / Other (.ics)]]' . "\n\n";
+      $content .= '===== Notes =====' . "\n\n";
+      $content .= "\n\n";
+      $content .= '===== Recording Links =====' . "\n\n";
+      $content .= "\n";
+
+      saveWikiText($pageId, $content, 'Created from calendar event: ' . $eventData['title']);
+
+      return $pageId;
+  }
+
+  /**
+   * Create a DokuWiki page for an appearances calendar event
+   */
+  protected function createAppearanceEventPage($pageId, $calendarPage, $calendarName, $eventData)
+  {
+      // Normalize param keys — may come from raw form (eventname/eventfrom) or normalized (title/date)
+      $title       = !empty($eventData['title'])       ? $eventData['title']       : ($eventData['eventname'] ?? '');
+      $description = !empty($eventData['description']) ? $eventData['description'] : ($eventData['eventdescription'] ?? '');
+      $location    = !empty($eventData['location'])    ? $eventData['location']    : ($eventData['eventlocation'] ?? '');
+      $date        = !empty($eventData['date'])        ? $eventData['date']        : ($eventData['eventfrom'] ?? '');
+      $time        = !empty($eventData['time'])        ? $eventData['time']        : ($eventData['eventfromtime'] ?? '');
+      $uid         = !empty($eventData['uid'])         ? $eventData['uid']         : '';
+
+      $icsUrl = DOKU_URL . 'lib/plugins/davcal/singleevent.php?uid=' . urlencode($uid) .
+                '&occurrence_date=' . urlencode($date);
+
+      $dtStart = new \DateTime($date . (!empty($time) ? 'T' . str_replace(':', '', $time) . '00' : ''));
+      $dtEnd = clone $dtStart;
+      if(!empty($time))
+      {
+          $dtEnd->modify('+1 hour');
+          $calStart     = $dtStart->format('Ymd\THis\Z');
+          $calEnd       = $dtEnd->format('Ymd\THis\Z');
+          $outlookStart = $dtStart->format(\DateTime::ATOM);
+          $outlookEnd   = $dtEnd->format(\DateTime::ATOM);
+      }
+      else
+      {
+          $calStart     = $dtStart->format('Ymd');
+          $dtEnd->modify('+1 day');
+          $calEnd       = $dtEnd->format('Ymd');
+          $outlookStart = $dtStart->format('Y-m-d');
+          $outlookEnd   = $dtEnd->format('Y-m-d');
+      }
+
+      $calTitle    = rawurlencode($title);
+      $calDesc     = rawurlencode($description);
+      $calLocation = rawurlencode($location);
+
+      $googleUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' .
+                   '&text=' . $calTitle .
+                   '&dates=' . $calStart . '/' . $calEnd .
+                   '&details=' . $calDesc .
+                   '&location=' . $calLocation;
+
+      $outlook365Url = 'https://outlook.office.com/calendar/0/deeplink/compose?subject=' . $calTitle .
+                       '&startdt=' . rawurlencode($outlookStart) .
+                       '&enddt=' . rawurlencode($outlookEnd) .
+                       '&body=' . $calDesc .
+                       '&location=' . $calLocation;
+
+      $outlookLiveUrl = 'https://outlook.live.com/calendar/0/deeplink/compose?subject=' . $calTitle .
+                        '&startdt=' . rawurlencode($outlookStart) .
+                        '&enddt=' . rawurlencode($outlookEnd) .
+                        '&body=' . $calDesc .
+                        '&location=' . $calLocation;
+
+      // Build links section
+      $linksSection = '';
+      $links = !empty($eventData['links']) ? $eventData['links'] : (!empty($eventData['attachments']) ? $eventData['attachments'] : []);
+      if(!empty($links) && is_array($links))
+      {
+          foreach($links as $link)
+              if(!empty($link)) $linksSection .= '  * ' . $link . "\n";
+      }
+
+      $content  = '====== ' . $title . ' ======' . "\n\n";
+      $content .= '**Calendar:** [[' . $calendarPage . '|' . $calendarName . ']]' . "\n\n";
+      $dateTo = !empty($eventData['dateto']) ? $eventData['dateto'] : (!empty($eventData['eventto']) ? $eventData['eventto'] : '');
+      $content .= '**Date:** ' . $date;
+      if(!empty($time))
+          $content .= ' ' . $time . ' UTC';
+      if(!empty($dateTo) && $dateTo !== $date)
+          $content .= ' - ' . $dateTo;
+      $content .= "\n\n";
+      if(!empty($location))
+          $content .= '**Location:** ' . $location . "\n\n";
+      $content .= '===== Description =====' . "\n\n";
+      $content .= (!empty($description) ? $description : '//No description provided//') . "\n\n";
+      if(!empty($linksSection))
+      {
+          $content .= '===== Event Website =====' . "\n\n";
+          $content .= $linksSection . "\n";
+      }
+
+      // Members section — always present, with submitter row if they checked attending
+      $content .= '===== Members at this Event =====' . "\n\n";
+      $content .= '//Are you also going to this event? Edit this page to add/remove your info below, or use the "I\'m also going" button on the [[calendars:appearances_calendar|Appearances calendar page]].//' . "\n\n";
+      $content .= '^  Name  ^  Table  ^  Panels/Workshops  ^  Stamp Rally  ^' . "\n";
+      if(!empty($eventData['submitter_attending']) && $eventData['submitter_attending'] == '1')
+      {
+          $name      = !empty($eventData['submitter_name'])       ? $eventData['submitter_name']       : 'N/A';
+          $table     = !empty($eventData['submitter_table'])      ? $eventData['submitter_table']       : 'N/A';
+          $panels    = !empty($eventData['submitter_panels'])     ? $eventData['submitter_panels']      : 'N/A';
+          $stamprally = (!empty($eventData['submitter_stamprally']) && $eventData['submitter_stamprally'] == '1') ? 'Y' : 'N';
+          $content .= '|  ' . $name . '  |  ' . $table . '  |  ' . $panels . '  |  ' . $stamprally . '  |' . "\n";
+      }
+      $stampUrl = DOKU_URL . 'lib/plugins/davcal/stamprally.php?page=' . rawurlencode($pageId);
+      $content .= '|  [[' . $stampUrl . '|Generate Stamp Rally Sheet]]  ||||' . "\n\n";
+
+      $content .= '===== Add to Calendar =====' . "\n\n";
+      $content .= '  * [[' . $googleUrl . '|Google Calendar]]' . "\n";
+      $content .= '  * [[' . $outlook365Url . '|Outlook 365]]' . "\n";
+      $content .= '  * [[' . $outlookLiveUrl . '|Outlook Live]]' . "\n";
+      $content .= '  * [[' . $icsUrl . '|iCalendar / Other (.ics)]]' . "\n\n";
+
+      $content .= '===== Notes =====' . "\n\n\n\n";
+
+      $content .= '<--- [[:calendars:appearances_calendar|Back to Appearances & Cons Calendar]]' . "\n";
+
+      saveWikiText($pageId, $content, 'Created from appearances calendar: ' . $title);
+
+      return $pageId;
+  }
+
+  /**
+   * Append a member entry to an existing appearances event page
+   *
+   * @param string $pageId The wiki page ID
+   * @param array $memberData name, table, panels
+   * @return bool
+   */
+  public function appendMemberToEventPage($pageId, $memberData)
+  {
+      if(!page_exists($pageId))
+          return false;
+
+      $existing = rawWiki($pageId);
+
+      $name       = !empty($memberData['submitter_name'])       ? $memberData['submitter_name']   : 'N/A';
+      $table      = !empty($memberData['submitter_table'])      ? $memberData['submitter_table']  : 'N/A';
+      $panels     = !empty($memberData['submitter_panels'])     ? $memberData['submitter_panels'] : 'N/A';
+      $stamprally = (!empty($memberData['submitter_stamprally']) && $memberData['submitter_stamprally'] == '1') ? 'Y' : 'N';
+
+      $row = '|  ' . $name . '  |  ' . $table . '  |  ' . $panels . '  |  ' . $stamprally . '  |' . "\n";
+
+      // Insert before the Generate Stamp Rally link row
+      $stampRallyRow = '|  [[' . DOKU_URL;
+      if(strpos($existing, $stampRallyRow) !== false)
+      {
+          $pos = strrpos($existing, "\n|  [[" . DOKU_URL);
+          if($pos !== false)
+              $new = substr($existing, 0, $pos) . "\n" . $row . substr($existing, $pos);
+          else
+              $new = str_replace('===== Add to Calendar =====', $row . '===== Add to Calendar =====', $existing);
+      }
+      elseif(strpos($existing, '===== Add to Calendar =====') !== false)
+          $new = str_replace('===== Add to Calendar =====', $row . '===== Add to Calendar =====', $existing);
+      else
+          $new = $existing . $row;
+
+      saveWikiText($pageId, $new, 'Member added: ' . $name);
+
+      return true;
+  }
+
+  /**
+   * Regenerate an appearances event page, preserving Notes and Recording Links sections
+   */
+  public function regenAppearanceEventPage($pageId, $eventData)
+  {
+      if(!page_exists($pageId))
+          return false;
+
+      // Preserve Notes and Recording Links from existing page
+      $existing = rawWiki($pageId);
+      $notes = '';
+      $recordingLinks = '';
+
+      if(preg_match('/===== Notes =====\s*(.*?)(?====== |===== |$)/s', $existing, $m))
+          $notes = trim($m[1]);
+      if(preg_match('/===== Recording Links =====\s*(.*?)(?====== |===== |$)/s', $existing, $m))
+          $recordingLinks = trim($m[1]);
+
+      // Preserve existing members table rows
+      $memberRows = [];
+      if(preg_match_all('/^\|  .+  \|  .+  \|  .+  \|/m', $existing, $m))
+          $memberRows = $m[0];
+
+      // Temporarily allow overwriting existing page
+      $calendarPage = 'calendars:appearances_calendar';
+      $calendarName = 'Appearances Calendar';
+
+      // Generate fresh page using createAppearanceEventPage logic
+      // but inject preserved content and member rows
+      $eventData['_preserved_notes']          = $notes;
+      $eventData['_preserved_recording_links'] = $recordingLinks;
+      $eventData['_preserved_member_rows']     = $memberRows;
+
+      return $this->regenAppearanceEventPageContent($pageId, $calendarPage, $calendarName, $eventData);
+  }
+
+  /**
+   * Internal: write regenerated appearances page content
+   */
+  protected function regenAppearanceEventPageContent($pageId, $calendarPage, $calendarName, $eventData)
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+
+      $title       = !empty($eventData['title'])       ? $eventData['title']       : ($eventData['eventname'] ?? '');
+      $description = !empty($eventData['description']) ? $eventData['description'] : ($eventData['eventdescription'] ?? '');
+      $location    = !empty($eventData['location'])    ? $eventData['location']    : ($eventData['eventlocation'] ?? '');
+      $date        = !empty($eventData['date'])        ? $eventData['date']        : ($eventData['eventfrom'] ?? '');
+      $dateTo      = !empty($eventData['dateto'])      ? $eventData['dateto']      : ($eventData['eventto'] ?? '');
+      $time        = !empty($eventData['time'])        ? $eventData['time']        : ($eventData['eventfromtime'] ?? '');
+      $uid         = !empty($eventData['uid'])         ? $eventData['uid']         : '';
+
+      $icsUrl = DOKU_URL . 'lib/plugins/davcal/singleevent.php?uid=' . urlencode($uid) .
+                '&occurrence_date=' . urlencode($date);
+
+      $dtStart = new \DateTime($date);
+      $dtEnd   = clone $dtStart;
+      $calStart     = $dtStart->format('Ymd');
+      $dtEnd->modify('+1 day');
+      $calEnd       = $dtEnd->format('Ymd');
+      $outlookStart = $dtStart->format('Y-m-d');
+      $outlookEnd   = $dtEnd->format('Y-m-d');
+
+      $calTitle    = rawurlencode($title);
+      $calDesc     = rawurlencode($description);
+      $calLocation = rawurlencode($location);
+
+      $googleUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' .
+                   '&text=' . $calTitle . '&dates=' . $calStart . '/' . $calEnd .
+                   '&details=' . $calDesc . '&location=' . $calLocation;
+
+      $outlook365Url = 'https://outlook.office.com/calendar/0/deeplink/compose?subject=' . $calTitle .
+                       '&startdt=' . rawurlencode($outlookStart) . '&enddt=' . rawurlencode($outlookEnd) .
+                       '&body=' . $calDesc . '&location=' . $calLocation;
+
+      $outlookLiveUrl = str_replace('outlook.office.com', 'outlook.live.com', $outlook365Url);
+
+      $links = !empty($eventData['links']) ? $eventData['links'] : (!empty($eventData['attachments']) ? $eventData['attachments'] : []);
+      $linksSection = '';
+      if(!empty($links) && is_array($links))
+          foreach($links as $link)
+              if(!empty($link)) $linksSection .= '  * ' . $link . "\n";
+
+      $content  = '====== ' . $title . ' ======' . "\n\n";
+      $content .= '**Calendar:** [[' . $calendarPage . '|' . $calendarName . ']]' . "\n\n";
+      $content .= '**Date:** ' . $date;
+      if(!empty($time))
+          $content .= ' ' . $time . ' UTC';
+      if(!empty($dateTo) && $dateTo !== $date) $content .= ' - ' . $dateTo;
+      $content .= "\n\n";
+      if(!empty($location)) $content .= '**Location:** ' . $location . "\n\n";
+      $content .= '===== Description =====' . "\n\n";
+      $content .= (!empty($description) ? $description : '//No description provided//') . "\n\n";
+      if(!empty($linksSection))
+      {
+          $content .= '===== Event Website =====' . "\n\n";
+          $content .= $linksSection . "\n";
+      }
+
+      // Members section — preserve existing rows
+      $content .= '===== Members at this Event =====' . "\n\n";
+      $content .= '//Are you also going to this event? Edit this page to add/remove your info below, or use the "I\'m also going" button on the [[calendars:appearances_calendar|Appearances calendar page]].//' . "\n\n";
+      $content .= '^  Name  ^  Table  ^  Panels/Workshops  ^  Stamp Rally  ^' . "\n";
+      if(!empty($eventData['_preserved_member_rows']))
+          $content .= implode("\n", $eventData['_preserved_member_rows']) . "\n";
+      $stampUrl = DOKU_URL . 'lib/plugins/davcal/stamprally.php?page=' . rawurlencode($pageId);
+      $content .= '|  [[' . $stampUrl . '|Generate Stamp Rally Sheet]]  ||||' . "\n\n";
+
+      $content .= '===== Add to Calendar =====' . "\n\n";
+      $content .= '  * [[' . $googleUrl . '|Google Calendar]]' . "\n";
+      $content .= '  * [[' . $outlook365Url . '|Outlook 365]]' . "\n";
+      $content .= '  * [[' . $outlookLiveUrl . '|Outlook Live]]' . "\n";
+      $content .= '  * [[' . $icsUrl . '|iCalendar / Other (.ics)]]' . "\n\n";
+
+      $content .= '===== Notes =====' . "\n\n";
+      if(!empty($eventData['_preserved_notes']))
+          $content .= $eventData['_preserved_notes'] . "\n\n";
+      else
+          $content .= "\n\n";
+
+      $content .= '===== Recording Links =====' . "\n\n";
+      if(!empty($eventData['_preserved_recording_links']))
+          $content .= $eventData['_preserved_recording_links'] . "\n\n";
+      else
+          $content .= "\n";
+
+      $content .= '<--- [[:calendars:appearances_calendar|Back to Appearances & Cons Calendar]]' . "\n";
+
+      saveWikiText($pageId, $content, 'Regenerated from calendar event: ' . $title);
+
+      return true;
+  }
+
+  /**
+   * Get the UID of the most recently added event for a calendar page
+   */
+  public function getMostRecentEventUid($calendarPage)
+  {
+      $sqlite = $this->getDB();
+      if(!$sqlite) return false;
+
+      $calid = $this->getCalendarIdForPage($calendarPage);
+      if(!$calid) return false;
+
+      $row = $sqlite->queryRecord(
+          'SELECT uid FROM calendarobjects WHERE calendarid = ? ORDER BY lastmodified DESC LIMIT 1',
+          [$calid]
+      );
+      return $row ? $row['uid'] : false;
+  }
+
+  /**
+   * Set X-DAVCAL-MEMBERS to 1 on a calendar entry by UID (idempotent)
+   */
+  public function setMembersFlag($calendarPage, $uid)
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+
+      $sqlite = $this->getDB();
+      if(!$sqlite) return false;
+
+      $calid = $this->getCalendarIdForPage($calendarPage);
+      if(!$calid) return false;
+
+      $query = 'SELECT uri, calendardata FROM calendarobjects WHERE calendarid = ? AND uid = ?';
+      $row = $sqlite->queryRecord($query, [$calid, $uid]);
+      if(!$row) return false;
+
+      try {
+          $vcalendar = \Sabre\VObject\Reader::read($row['calendardata']);
+      } catch(\Exception $e) {
+          return false;
+      }
+      $vevent = $vcalendar->VEVENT;
+      if(!$vevent) return false;
+
+      // Only update if not already set
+      $current = $vevent->{'X-DAVCAL-MEMBERS'};
+      if($current !== null) return true;
+
+      $vevent->add('X-DAVCAL-MEMBERS', '1');
+      $newData = $vcalendar->serialize();
+      $now = new \DateTime();
+      $updateQuery = 'UPDATE calendarobjects SET calendardata = ?, lastmodified = ?, size = ?, etag = ? WHERE calendarid = ? AND uid = ?';
+      $sqlite->query($updateQuery, $newData, $now->getTimestamp(), strlen($newData), md5($newData), $calid, $uid);
+      $this->updateSyncTokenLog($calid, $row['uri'], 'modified');
+
+      return true;
+  }
+
+  /**
+   * Return all public events across all calendars as an ICS feed.
+   * Events are considered public if they have X-DAVCAL-PUBLIC:1 set.
+   *
+   * @param string $calendarName Optional name for the feed
+   * @return string The ICS feed content
+   */
+  public function getPublicEventsAsICS($calendarName = 'Public Calendar')
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+          return false;
+
+      // Get all calendar IDs
+      $query = "SELECT DISTINCT calendarid FROM calendarobjects WHERE componenttype = 'VEVENT'";
+      $rows = $sqlite->queryAll($query, []);
+
+      $out = "BEGIN:VCALENDAR\r\n";
+      $out .= "VERSION:2.0\r\n";
+      $out .= "PRODID:-//DAVCal//DAVCal for DokuWiki//EN\r\n";
+      $out .= "CALSCALE:GREGORIAN\r\n";
+      $out .= "METHOD:PUBLISH\r\n";
+      $out .= "X-WR-CALNAME:" . $calendarName . "\r\n";
+
+      foreach($rows as $row)
+      {
+          $calid = $row['calendarid'];
+
+          // Skip disabled calendars
+          if(!$this->getCalendarStatus($calid))
+              continue;
+
+          $query = "SELECT calendardata FROM calendarobjects WHERE calendarid = ? AND componenttype = 'VEVENT'";
+          $events = $sqlite->queryAll($query, [$calid]);
+
+          foreach($events as $event)
+          {
+              $vcal = \Sabre\VObject\Reader::read($event['calendardata']);
+              foreach($vcal->VEVENT as $vevent)
+              {
+                  $publicProp = $vevent->{'X-DAVCAL-PUBLIC'};
+                  if($publicProp !== null && (string)$publicProp === '1')
+                  {
+                      // For appearances events with members, append members table to description
+                      $membersProp = $vevent->{'X-DAVCAL-MEMBERS'};
+                      if($membersProp !== null && (string)$membersProp === '1')
+                      {
+                          try {
+                              $summary = (string)$vevent->SUMMARY;
+                              $dtstart = $vevent->DTSTART;
+                              $dateStr = $dtstart ? $dtstart->getDateTime()->format('Y-m-d') : '';
+                              $pageId = $this->getEventPageId('calendars:appearances_calendar', $summary, $dateStr);
+                              if($pageId && page_exists($pageId))
+                              {
+                                  $wikiContent = rawWiki($pageId);
+                                  $members = [];
+                                  if(preg_match_all('/^\|  (.+?)  \|  (.*?)  \|  (.*?)  \|/m', $wikiContent, $matches, PREG_SET_ORDER))
+                                  {
+                                      foreach($matches as $match)
+                                      {
+                                          $name   = trim($match[1]);
+                                          $table  = trim($match[2]);
+                                          $panels = trim($match[3]);
+                                          $line = $name;
+                                          if($table && $table !== 'N/A')  $line .= ' | Table: ' . $table;
+                                          if($panels && $panels !== 'N/A') $line .= ' | Panels: ' . $panels;
+                                          $members[] = $line;
+                                      }
+                                  }
+                                  if(!empty($members))
+                                  {
+                                      $existing = $vevent->DESCRIPTION;
+                                      $desc = $existing ? (string)$existing : '';
+                                      $membersText = "\n\nMembers attending:\n" . implode("\n", $members);
+                                      $vevent->remove('DESCRIPTION');
+                                      $vevent->add('DESCRIPTION', $desc . $membersText);
+                                  }
+                              }
+                          } catch(\Exception $e) {
+                              // Silently skip members lookup on error
+                          }
+                      }
+                      $out .= $vevent->serialize();
+                  }
+              }
+          }
+      }
+
+      $out .= "END:VCALENDAR\r\n";
+      return $out;
+  }
+
+  /**
+   * Build the public events as a JSON-ready array for the FullCalendar embed.
+   *
+   * Unlike the ICS feed, this expands recurrences server-side (one concrete
+   * occurrence per row via sabre's EventIterator) and emits each occurrence as
+   * an offset-stamped instant through convertIcalDataToEntry(). FullCalendar's
+   * JSON source honours its timeZone setting (the ICS connector does not), so
+   * the embed can display any zone and switch live via a dropdown.
+   *
+   * Times are emitted in UTC; the client shifts them to the chosen zone. Each
+   * entry also carries startUtc/endUtc so the popup and add-to-calendar links
+   * read a true instant directly rather than a FullCalendar display marker.
+   *
+   * @param string $startDate Window start (ISO8601), usually sent by FullCalendar
+   * @param string $endDate   Window end (ISO8601)
+   * @param string $timezone  Emission zone; defaults to UTC
+   *
+   * @return array|false Array of event entries, or false on DB error
+   */
+  public function getPublicEventsAsJSON($startDate = null, $endDate = null, $timezone = 'UTC')
+  {
+      require_once(DOKU_PLUGIN.'davcal/vendor/autoload.php');
+
+      if($timezone !== '' && $timezone !== 'local')
+          $tz = new \DateTimeZone($timezone);
+      else
+          $tz = new \DateTimeZone('UTC');
+
+      $sqlite = $this->getDB();
+      if(!$sqlite)
+          return false;
+
+      $startTs = ($startDate !== null) ? new \DateTime($startDate) : null;
+      $endTs   = ($endDate   !== null) ? new \DateTime($endDate)   : null;
+
+      $data = array();
+
+      $calRows = $sqlite->queryAll("SELECT DISTINCT calendarid FROM calendarobjects WHERE componenttype = 'VEVENT'", array());
+
+      foreach($calRows as $calRow)
+      {
+          $calid = $calRow['calendarid'];
+          if(!$this->getCalendarStatus($calid))
+              continue;
+
+          $query = "SELECT calendardata, uid FROM calendarobjects WHERE calendarid = ? AND componenttype = 'VEVENT'";
+          $params = array($calid);
+          if($startTs !== null) { $query .= " AND lastoccurence > ?";  $params[] = $startTs->getTimestamp(); }
+          if($endTs   !== null) { $query .= " AND firstoccurence < ?"; $params[] = $endTs->getTimestamp(); }
+
+          $rows = $sqlite->queryAll($query, $params);
+
+          foreach($rows as $row)
+          {
+              if(!isset($row['calendardata']))
+                  continue;
+
+              $vcal = \Sabre\VObject\Reader::read($row['calendardata']);
+              $master = $vcal->VEVENT;   // first VEVENT = series master / single event
+              if($master === null)
+                  continue;
+
+              // The public flag lives on the master VEVENT. Skip private series
+              // before doing any (potentially expensive) expansion.
+              $publicProp = $master->{'X-DAVCAL-PUBLIC'};
+              if($publicProp === null || (string)$publicProp !== '1')
+                  continue;
+
+              if($master->RRULE !== null)
+              {
+                  $seriesEvents = array();
+                  foreach($vcal->VEVENT as $seriesEvent)
+                      $seriesEvents[] = $seriesEvent;
+                  $rEvents = new \Sabre\VObject\Recur\EventIterator($seriesEvents);
+                  $rEvents->rewind();
+                  $count = 0;
+                  while($rEvents->valid() && $count < 500)
+                  {
+                      $count++;
+                      $occurrenceStart = $rEvents->getDtStart();
+                      $occurrenceEnd   = $rEvents->getDtEnd();
+                      if(($endTs !== null) && ($occurrenceStart->getTimestamp() > $endTs->getTimestamp()))
+                          break;
+                      if(($startTs !== null) && ($occurrenceEnd->getTimestamp() < $startTs->getTimestamp()))
+                      {
+                          $rEvents->next();
+                          continue;
+                      }
+                      $event = $rEvents->getEventObject();
+                      $entry = $this->convertIcalDataToEntry($event, 'public', $tz, $row['uid'], null, true);
+                      $this->finalizePublicEntry($entry, $event);
+                      $data[] = $entry;
+                      $rEvents->next();
+                  }
+              }
+              else
+              {
+                  $entry = $this->convertIcalDataToEntry($master, 'public', $tz, $row['uid'], null);
+                  $this->finalizePublicEntry($entry, $master);
+                  $data[] = $entry;
+              }
+          }
+      }
+
+      return $data;
+  }
+
+  /**
+   * Finalize a public JSON entry: attach true-UTC copies of the times and, for
+   * appearances events with members, append the members table to the
+   * description (mirrors the ICS feed's behaviour).
+   *
+   * @param array $entry The entry to finalize, modified in place
+   * @param \Sabre\VObject\Component $vevent The source event/occurrence
+   *
+   * @return void
+   */
+  private function finalizePublicEntry(&$entry, $vevent)
+  {
+      // Feed is emitted in UTC, so start/end are already true instants. Copy
+      // them so the client never has to reconstruct an instant from a marker.
+      $entry['startUtc'] = isset($entry['start']) ? $entry['start'] : '';
+      $entry['endUtc']   = isset($entry['end'])   ? $entry['end']   : '';
+
+      $membersProp = $vevent->{'X-DAVCAL-MEMBERS'};
+      if($membersProp !== null && (string)$membersProp === '1')
+      {
+          try {
+              $summary = (string)$vevent->SUMMARY;
+              $dtstart = $vevent->DTSTART;
+              $dateStr = $dtstart ? $dtstart->getDateTime()->format('Y-m-d') : '';
+              $pageId = $this->getEventPageId('calendars:appearances_calendar', $summary, $dateStr);
+              if($pageId && page_exists($pageId))
+              {
+                  $wikiContent = rawWiki($pageId);
+                  $members = array();
+                  if(preg_match_all('/^\|  (.+?)  \|  (.*?)  \|  (.*?)  \|/m', $wikiContent, $matches, PREG_SET_ORDER))
+                  {
+                      foreach($matches as $match)
+                      {
+                          $name   = trim($match[1]);
+                          $table  = trim($match[2]);
+                          $panels = trim($match[3]);
+                          $line = $name;
+                          if($table && $table !== 'N/A')  $line .= ' | Table: ' . $table;
+                          if($panels && $panels !== 'N/A') $line .= ' | Panels: ' . $panels;
+                          $members[] = $line;
+                      }
+                  }
+                  if(!empty($members))
+                  {
+                      $existing = isset($entry['description']) ? $entry['description'] : '';
+                      $entry['description'] = $existing . "\n\nMembers attending:\n" . implode("\n", $members);
+                  }
+              }
+          } catch(\Exception $e) {
+              // Silently skip members lookup on error
+          }
+      }
+  }
 }
